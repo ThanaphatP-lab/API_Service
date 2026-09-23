@@ -1,0 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cu129
+-r base.txt
+
+torch
+torchvision
+transformers
+safetensors
+sentencepiece
+protobuf

@@ -1,0 +1,2 @@
+# Backward-compatible entry point for the all-in-one Docker image.
+-r requirements/all.txt

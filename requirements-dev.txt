@@ -1,0 +1,2 @@
+# Backward-compatible entry point used by local and CI test setup.
+-r requirements/dev.txt

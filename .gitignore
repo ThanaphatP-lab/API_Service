@@ -1,0 +1,106 @@
+# -----------------------------------------------------------------------------
+# Secrets and local environment configuration
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# -----------------------------------------------------------------------------
+# Python bytecode, caches, virtual environments, and build output
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.venv/
+.venv-*/
+venv/
+venv-*/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------------------------------------------------------
+# Runtime state, logs, uploads, and generated reports
+# -----------------------------------------------------------------------------
+.cache/
+.run/
+.tmp/
+tmp/
+temp/
+logs/
+*.log
+*.pid
+*.pid.lock
+baselines/
+outputs/
+artifacts/
+
+# Keep optional placeholders if these directories later need to exist in Git.
+!logs/.gitkeep
+!baselines/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Model weights and downloaded ML artifacts
+# Keep only directory placeholders; model binaries must be deployed separately.
+# -----------------------------------------------------------------------------
+weights/**
+!weights/**/
+!weights/**/.gitkeep
+
+*.pdiparams
+*.pdparams
+*.pdmodel
+*.pdopt
+*.onnx
+*.engine
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.bin
+
+# Paddle/PaddleX and Hugging Face caches
+.paddlex/
+.paddleocr/
+.huggingface/
+
+# -----------------------------------------------------------------------------
+# Notebook, editor, and operating-system files
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# -----------------------------------------------------------------------------
+# Local container overrides
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml

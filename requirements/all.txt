@@ -1,0 +1,4 @@
+# Compatibility environment used by the single all-in-one Docker image.
+-r paddle.txt
+-r siglip.txt
+-r demo.txt

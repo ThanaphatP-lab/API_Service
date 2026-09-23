@@ -1,0 +1,1 @@
+"""Independently deployable FastAPI applications."""

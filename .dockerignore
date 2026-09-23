@@ -1,0 +1,12 @@
+.git
+.env*
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+*.md
+!README.md
+weights/**
+!weights/**/.gitkeep
+test-data

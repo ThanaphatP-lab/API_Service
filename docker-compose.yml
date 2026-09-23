@@ -1,0 +1,273 @@
+x-common-environment: &common-environment
+  APP_ENV: ${APP_ENV:-development}
+  INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+  INTERNAL_API_TOKEN_PREVIOUS: ${INTERNAL_API_TOKEN_PREVIOUS:-}
+  RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-120}
+  RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+  MAX_RATE_LIMIT_KEYS: ${MAX_RATE_LIMIT_KEYS:-10000}
+  MAX_REQUEST_MB: ${MAX_REQUEST_MB:-28}
+  MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+  MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-40000000}
+  MAX_IMAGE_DIMENSION: ${MAX_IMAGE_DIMENSION:-12000}
+  MAX_BATCH_IMAGES: ${MAX_BATCH_IMAGES:-64}
+  MAX_BATCH_UPLOAD_MB: ${MAX_BATCH_UPLOAD_MB:-64}
+  MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT_REQUESTS:-1}
+  INFERENCE_QUEUE_TIMEOUT_SECONDS: ${INFERENCE_QUEUE_TIMEOUT_SECONDS:-5}
+  DEBUG_ERRORS: ${DEBUG_ERRORS:-false}
+
+x-base-service: &base-service
+  image: ${MODEL_IMAGE:-api-service-model:latest}
+  environment:
+    <<: *common-environment
+    CORS_ORIGINS: ${CORS_ORIGINS:-}
+    PADDLE_PDX_MODEL_SOURCE: ${PADDLE_PDX_MODEL_SOURCE:-BOS}
+  volumes:
+    - ./weights:/app/weights:ro
+  restart: unless-stopped
+  depends_on:
+    model-image:
+      condition: service_completed_successfully
+
+x-gpu-service: &gpu-service
+  <<: *base-service
+  environment:
+    <<: *common-environment
+    MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+    PADDLE_PDX_MODEL_SOURCE: ${PADDLE_PDX_MODEL_SOURCE:-BOS}
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+  model-image:
+    image: ${MODEL_IMAGE:-api-service-model:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["true"]
+    restart: "no"
+
+  # Leaf model services -----------------------------------------------------
+  layout:
+    <<: *gpu-service
+    command: uvicorn services.layout.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      LAYOUT_MODEL_DIR: /app/weights/layout
+    expose: ["8000"]
+
+  text-det-v5:
+    <<: *gpu-service
+    command: uvicorn services.text_det.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      DET_MODEL_NAME: PP-OCRv5_server_det
+      DET_MODEL_DIR: /app/weights/detection/det-v5
+    expose: ["8000"]
+
+  text-det-v6:
+    <<: *gpu-service
+    profiles: ["optional-paddle"]
+    command: uvicorn services.text_det.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      DET_MODEL_NAME: PP-OCRv6_medium_det
+      DET_MODEL_DIR: /app/weights/detection/det-v6
+    expose: ["8000"]
+
+  text-rec-th:
+    <<: *gpu-service
+    command: uvicorn services.text_rec.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      REC_MODEL_NAME: th_PP-OCRv5_mobile_rec
+      REC_MODEL_DIR: /app/weights/recognition/rec-v5
+    expose: ["8000"]
+
+  table-wired:
+    <<: *gpu-service
+    command: uvicorn services.table.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      TABLE_MODEL_NAME: SLANeXt_wired
+      TABLE_MODEL_DIR: /app/weights/table-wired
+    expose: ["8000"]
+
+  table-wireless:
+    <<: *gpu-service
+    command: uvicorn services.table.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      TABLE_MODEL_NAME: SLANeXt_wireless
+      TABLE_MODEL_DIR: /app/weights/table-wireless
+    expose: ["8000"]
+
+  # Optional all-in-one table model from coop-project-4 (4).ipynb. Do not run
+  # this together with the split table stack unless duplicate model loading is
+  # intentional: TableRecognitionPipelineV2 owns its internal submodels.
+  table-v2:
+    <<: *gpu-service
+    profiles: ["table-v2"]
+    command: uvicorn services.table_v2.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      TABLE_V2_WIRED_MODEL_NAME: ${TABLE_V2_WIRED_MODEL_NAME:-SLANeXt_wired}
+      TABLE_V2_WIRELESS_MODEL_NAME: ${TABLE_V2_WIRELESS_MODEL_NAME:-SLANeXt_wireless}
+      TABLE_V2_OCR_VERSION: ${TABLE_V2_OCR_VERSION:-v5}
+      TABLE_V2_MODEL_CACHE_SIZE: ${TABLE_V2_MODEL_CACHE_SIZE:-2}
+      TABLE_V2_TEXT_DETECTION_MODEL_NAME: ${TABLE_V2_TEXT_DETECTION_MODEL_NAME:-PP-OCRv5_server_det}
+      TABLE_V2_TEXT_RECOGNITION_MODEL_NAME: ${TABLE_V2_TEXT_RECOGNITION_MODEL_NAME:-th_PP-OCRv5_mobile_rec}
+    expose: ["8000"]
+
+  siglip:
+    <<: *gpu-service
+    command: uvicorn services.siglip.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      SIGLIP_MODEL_NAME: ${SIGLIP_MODEL_NAME:-google/siglip-so400m-patch14-384}
+      SIGLIP_MODEL_DIR: /app/weights/siglip
+    expose: ["8000"]
+
+  # Pipeline services -------------------------------------------------------
+  ocr-custom:
+    <<: *base-service
+    command: uvicorn services.ocr_pipeline_custom.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      DET_SERVICE_URL: http://text-det-v5:8000
+      REC_SERVICE_URL: http://text-rec-th:8000
+      OCR_RECOGNITION_BATCH_SIZE: ${OCR_RECOGNITION_BATCH_SIZE:-64}
+    expose: ["8000"]
+    depends_on:
+      model-image:
+        condition: service_completed_successfully
+      text-det-v5:
+        condition: service_started
+      text-rec-th:
+        condition: service_started
+
+  ocr-paddle:
+    <<: *gpu-service
+    profiles: ["optional-paddle"]
+    command: uvicorn services.ocr_pipeline_paddle.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: ${MODEL_DEVICE:-gpu:0}
+      DET_MODEL_NAME: PP-OCRv6_medium_det
+      DET_MODEL_DIR: /app/weights/detection/det-v6
+      REC_MODEL_NAME: th_PP-OCRv5_mobile_rec
+      REC_MODEL_DIR: /app/weights/recognition/rec-v5
+    expose: ["8000"]
+
+  layout-pipeline:
+    <<: *base-service
+    command: uvicorn services.layout_pipeline.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      LAYOUT_SERVICE_URL: http://layout:8000
+      DET_SERVICE_URL: http://text-det-v5:8000
+    expose: ["8000"]
+    depends_on:
+      model-image:
+        condition: service_completed_successfully
+      layout:
+        condition: service_started
+      text-det-v5:
+        condition: service_started
+
+  table-pipeline:
+    <<: *base-service
+    command: uvicorn services.table_pipeline.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      TABLE_WIRED_SERVICE_URL: http://table-wired:8000
+      TABLE_WIRELESS_SERVICE_URL: http://table-wireless:8000
+      OCR_SERVICE_URL: http://ocr-custom:8000
+    expose: ["8000"]
+    depends_on:
+      model-image:
+        condition: service_completed_successfully
+      table-wired:
+        condition: service_started
+      table-wireless:
+        condition: service_started
+      ocr-custom:
+        condition: service_started
+
+  image-verification:
+    <<: *base-service
+    command: uvicorn services.image_verification_pipeline.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      SIGLIP_SERVICE_URL: http://siglip:8000
+    expose: ["8000"]
+    depends_on:
+      model-image:
+        condition: service_completed_successfully
+      siglip:
+        condition: service_started
+
+  gateway:
+    <<: *base-service
+    command: uvicorn services.gateway.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *common-environment
+      MODEL_GATEWAY_API_KEY: ${MODEL_GATEWAY_API_KEY:-}
+      MODEL_GATEWAY_API_KEY_PREVIOUS: ${MODEL_GATEWAY_API_KEY_PREVIOUS:-}
+      MAX_CONCURRENT_REQUESTS: ${GATEWAY_MAX_CONCURRENT_REQUESTS:-4}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      GATEWAY_ENABLED_PIPELINES: ${GATEWAY_ENABLED_PIPELINES:-layout,ocr-custom,table,image-verification,text-det-v5,text-recognition,siglip}
+      GATEWAY_REQUIRED_PIPELINES: ${GATEWAY_REQUIRED_PIPELINES:-}
+      GATEWAY_READINESS_TIMEOUT_SECONDS: ${GATEWAY_READINESS_TIMEOUT_SECONDS:-10}
+      LAYOUT_PIPELINE_URL: http://layout-pipeline:8000
+      DET_V5_URL: http://text-det-v5:8000
+      DET_V6_URL: http://text-det-v6:8000
+      REC_SERVICE_URL: http://text-rec-th:8000
+      OCR_CUSTOM_URL: http://ocr-custom:8000
+      OCR_PADDLE_URL: http://ocr-paddle:8000
+      TABLE_PIPELINE_URL: http://table-pipeline:8000
+      TABLE_MODEL_URL: http://table-v2:8000
+      SIGLIP_URL: http://siglip:8000
+      IMAGE_VERIFICATION_URL: http://image-verification:8000
+    ports: ["${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8080}:8000"]
+    depends_on:
+      model-image:
+        condition: service_completed_successfully
+
+  demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    environment:
+      MODEL_GATEWAY_API_KEY: ${MODEL_GATEWAY_API_KEY:-}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      LAYOUT_URL: http://layout:8000
+      DET_V5_URL: http://text-det-v5:8000
+      DET_V6_URL: http://text-det-v6:8000
+      REC_TH_URL: http://text-rec-th:8000
+      OCR_CUSTOM_URL: http://ocr-custom:8000
+      OCR_PADDLE_URL: http://ocr-paddle:8000
+      TABLE_WIRED_URL: http://table-wired:8000
+      TABLE_WIRELESS_URL: http://table-wireless:8000
+      TABLE_V2_URL: http://table-v2:8000
+      SIGLIP_URL: http://siglip:8000
+      LAYOUT_PIPELINE_URL: http://layout-pipeline:8000
+      TABLE_PIPELINE_URL: http://table-pipeline:8000
+      IMAGE_VERIFICATION_URL: http://image-verification:8000
+      GATEWAY_URL: http://gateway:8000
+    ports: ["${DEMO_BIND_ADDRESS:-127.0.0.1}:${DEMO_PORT:-8501}:8501"]
+    depends_on:
+      - gateway
+    restart: unless-stopped

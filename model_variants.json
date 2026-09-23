@@ -1,0 +1,74 @@
+{
+  "detection": {
+    "v5": {
+      "baseline": {
+        "model_name": "PP-OCRv5_server_det",
+        "model_dir": "weights/detection/det-v5",
+        "requires_local_weights": false
+      },
+      "thai_ft_v1": {
+        "model_name": "PP-OCRv5_server_det",
+        "model_dir": "weights/detection/det-v5/thai_ft_v1/infer",
+        "requires_local_weights": true
+      },
+      "thai_ft_v2": {
+        "model_name": "PP-OCRv5_server_det",
+        "model_dir": "weights/detection/det-v5/thai_ft_v2/infer",
+        "requires_local_weights": true
+      }
+    },
+    "v6": {
+      "baseline": {
+        "model_name": "PP-OCRv6_medium_det",
+        "model_dir": "weights/detection/det-v6",
+        "requires_local_weights": false
+      },
+      "thai_ft_v1": {
+        "model_name": "PP-OCRv6_medium_det",
+        "model_dir": "weights/detection/det-v6/thai_ft_v1/infer",
+        "requires_local_weights": true
+      },
+      "thai_ft_v2": {
+        "model_name": "PP-OCRv6_medium_det",
+        "model_dir": "weights/detection/det-v6/thai_ft_v2/infer",
+        "requires_local_weights": true
+      }
+    }
+  },
+  "recognition": {
+    "v5": {
+      "baseline": {
+        "model_name": "th_PP-OCRv5_mobile_rec",
+        "model_dir": "weights/recognition/rec-v5",
+        "requires_local_weights": false
+      },
+      "thai_ft_v1": {
+        "model_name": "th_PP-OCRv5_mobile_rec",
+        "model_dir": "weights/recognition/rec-v5/thai_ft_v1/infer",
+        "requires_local_weights": true
+      },
+      "thai_ft_v2": {
+        "model_name": "th_PP-OCRv5_mobile_rec",
+        "model_dir": "weights/recognition/rec-v5/thai_ft_v2/infer",
+        "requires_local_weights": true
+      }
+    },
+    "v6": {
+      "baseline": {
+        "model_name": "PP-OCRv6_medium_rec",
+        "model_dir": "weights/recognition/rec-v6",
+        "requires_local_weights": false
+      },
+      "thai_ft_v1": {
+        "model_name": "PP-OCRv6_medium_rec",
+        "model_dir": "weights/recognition/rec-v6/thai_ft_v1/infer",
+        "requires_local_weights": true
+      },
+      "thai_ft_v2": {
+        "model_name": "PP-OCRv6_medium_rec",
+        "model_dir": "weights/recognition/rec-v6/thai_ft_v2/infer",
+        "requires_local_weights": true
+      }
+    }
+  }
+}

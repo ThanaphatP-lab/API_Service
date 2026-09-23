@@ -1,0 +1,4 @@
+-r base.txt
+
+# The process manager runs the optional Streamlit demo from the API venv.
+streamlit

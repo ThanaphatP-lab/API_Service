@@ -1,0 +1,6 @@
+--extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu129/
+-r base.txt
+
+paddlepaddle-gpu
+paddleocr
+safetensors

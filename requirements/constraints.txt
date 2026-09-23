@@ -1,0 +1,19 @@
+# Single source of truth for dependency versions used by every environment.
+fastapi==0.115.6
+httpx==0.28.1
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+paddleocr==3.7.0
+paddlepaddle-gpu==3.3.0
+pillow==11.1.0
+protobuf==7.36.0
+pytest==8.3.4
+python-multipart==0.0.20
+requests==2.32.3
+safetensors==0.6.2
+sentencepiece==0.2.2
+streamlit==1.42.0
+torch==2.8.0
+torchvision==0.23.0
+transformers==4.48.0
+uvicorn==0.34.0

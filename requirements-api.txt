@@ -1,0 +1,2 @@
+# Backward-compatible entry point used by setup scripts.
+-r requirements/api.txt

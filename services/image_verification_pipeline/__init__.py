@@ -1,0 +1,1 @@
+"""SigLIP verification orchestration service."""

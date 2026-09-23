@@ -1,0 +1,51 @@
+{
+  "contract": "model-gateway-v1",
+  "success_envelope": {
+    "required": ["data", "meta"],
+    "meta_required": ["request_id", "api_version", "service", "duration_ms"]
+  },
+  "error_envelope": {
+    "required": ["error"],
+    "error_required": ["code", "message", "details", "request_id", "docs"]
+  },
+  "public_endpoints": [
+    {"method": "GET", "path": "/api/v1/health", "success_data": ["status", "model", "device"]},
+    {"method": "GET", "path": "/api/v1/readiness", "success_data": ["status", "summary", "services"]},
+    {"method": "GET", "path": "/api/v1/services", "success_data": ["document_layouts", "ocr_results"]},
+    {"method": "POST", "path": "/api/v1/document-layouts", "success_data": []},
+    {"method": "POST", "path": "/api/v1/ocr-results", "success_data": []},
+    {"method": "POST", "path": "/api/v1/ocr-result-batches", "success_data": []},
+    {"method": "POST", "path": "/api/v1/text-detections", "success_data": []},
+    {"method": "POST", "path": "/api/v1/text-detection-batches", "success_data": []},
+    {"method": "POST", "path": "/api/v1/text-recognitions", "success_data": []},
+    {"method": "POST", "path": "/api/v1/text-recognition-batches", "success_data": []},
+    {"method": "POST", "path": "/api/v1/table-results", "success_data": []},
+    {"method": "POST", "path": "/api/v1/table-model-results", "success_data": []},
+    {"method": "POST", "path": "/api/v1/image-classifications", "success_data": []},
+    {"method": "POST", "path": "/api/v1/image-verifications", "success_data": []}
+  ],
+  "hidden_legacy_endpoints": [
+    {"method": "GET", "path": "/health"},
+    {"method": "POST", "path": "/v1/textdetection"},
+    {"method": "POST", "path": "/v1/textrecognition"}
+  ],
+  "golden_success": {
+    "data": {"predictions": []},
+    "meta": {
+      "request_id": "<request_id>",
+      "api_version": "v1",
+      "service": "<service>",
+      "model": "<model>",
+      "duration_ms": "<duration_ms>"
+    }
+  },
+  "golden_error": {
+    "error": {
+      "code": "<stable_error_code>",
+      "message": "<human_readable_message>",
+      "details": [],
+      "request_id": "<request_id>",
+      "docs": "<docs_url>"
+    }
+  }
+}
