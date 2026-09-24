@@ -557,6 +557,22 @@ or `model` remains a shorthand that selects the same variant for both.
 `TABLE_V2_MODEL_CACHE_SIZE` defaults to `2` to avoid retaining too many complete
 pipeline instances in GPU memory.
 
+## Inference layer
+
+Model constructors และ inference logic อยู่ใน `inference/` ส่วน
+`services/*/main.py` รับผิดชอบเฉพาะ HTTP parsing, validation และ response
+envelope โมดูล inference ใช้ interface หลักร่วมกัน:
+
+```python
+selection = selection_from_settings(...)
+runtime = get_model(selection)
+payload = infer(image_path, selection)
+```
+
+DET, REC และ TableV2 files เดิมใต้ `models/` เป็น compatibility wrappers
+ชั่วคราว โค้ดใหม่ต้อง import จาก `inference.*` รายละเอียด boundary อยู่ที่
+`inference/README.md`
+
 ## Dependency groups
 
 Pinned versions live only in `requirements/constraints.txt`. Installable groups
@@ -588,6 +604,15 @@ systemd/Supervisor for automatic start after reboot and crash recovery.
 ถ้า directory ว่าง ระบบจะ resolve/download official model ด้วยชื่อโมเดล หากมีไฟล์ local export ระบบจะใช้ directory ที่กำหนดผ่าน environment
 
 ## Tests
+
+Phase 4 separates API infrastructure into `core/`, with typed infrastructure
+settings and compatibility imports in `shared/api.py`.
+See [core boundaries and settings lifecycle](core/README.md).
+
+Phase 3 separates service routes, injectable upstream clients, pipeline workflows
+and geometry/parsing/scoring. See [pipeline boundaries](pipelines/README.md).
+The old `pipeline/` imports remain compatibility wrappers; API routes and model
+selection behavior are unchanged by this phase.
 
 ```cmd
 .venv-api312\Scripts\python.exe -m pip install -r requirements-dev.txt

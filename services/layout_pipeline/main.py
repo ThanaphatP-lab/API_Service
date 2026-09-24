@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 import asyncio
-import os
+from core.settings import layout_settings
+from core.service_settings import ServiceURLs
 
 from fastapi import Request
 
-from pipeline.layout_pipeline import analyze_document_layout, detect_text_batch, detect_text_only
-from shared.api import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, create_app, parse_bool, parse_image_request
+from pipelines.layout.orchestrator import analyze_document_layout, detect_text_batch, detect_text_only
+from clients.model_service_client import HTTPModelClient
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_bool, parse_image_request
+from core.app_factory import create_app
 from shared.contracts import request_id, success_response
-from shared.upstream import get_readiness
 
 
 MODEL_NAME = "PP-DocLayoutV3 + text-detection"
 SERVICE_NAME = "document-layout-pipeline"
-LAYOUT_SERVICE_URL = os.getenv("LAYOUT_SERVICE_URL", "http://localhost:8001")
-DET_SERVICE_URL = os.getenv("DET_SERVICE_URL", "http://localhost:8002")
+service_urls = ServiceURLs()
+LAYOUT_SERVICE_URL = service_urls.layout_service_url
+DET_SERVICE_URL = service_urls.det_service_url
+model_client = HTTPModelClient()
 app = create_app("Document Layout Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
@@ -26,6 +30,7 @@ async def text_detections(request: Request) -> dict:
             detect_text_only,
             image.path,
             detector_url=DET_SERVICE_URL,
+            client=model_client,
             request_id=request_id(request),
         )
         return success_response(request, result, service=SERVICE_NAME, model=MODEL_NAME)
@@ -41,6 +46,7 @@ async def text_detection_batches(request: Request) -> dict:
             detect_text_batch,
             images.paths,
             detector_url=DET_SERVICE_URL,
+            client=model_client,
             request_id=request_id(request),
         )
         return success_response(
@@ -63,24 +69,15 @@ async def document_layouts(request: Request) -> dict:
             default=False,
         )
         mode = str(image.fields.get("auto_roi_mode", "text-line")).strip().lower().replace("_", "-")
-        padding = (
-            int(os.getenv("AUTO_ROI_EXPAND_TOP_PX", "8")),
-            int(os.getenv("AUTO_ROI_EXPAND_RIGHT_PX", "8")),
-            int(os.getenv("AUTO_ROI_EXPAND_BOTTOM_PX", "8")),
-            int(os.getenv("AUTO_ROI_EXPAND_LEFT_PX", "8")),
-        )
-        table_padding = (
-            int(os.getenv("AUTO_ROI_TABLE_EXPAND_TOP_PX", "2")),
-            int(os.getenv("AUTO_ROI_TABLE_EXPAND_RIGHT_PX", "2")),
-            int(os.getenv("AUTO_ROI_TABLE_EXPAND_BOTTOM_PX", "2")),
-            int(os.getenv("AUTO_ROI_TABLE_EXPAND_LEFT_PX", "2")),
-        )
-        max_neighbor_overlap = float(os.getenv("AUTO_ROI_MAX_NEIGHBOR_OVERLAP_RATIO", "0.15"))
+        padding = layout_settings.padding
+        table_padding = layout_settings.table_padding
+        max_neighbor_overlap = layout_settings.max_neighbor_overlap
         result = await asyncio.to_thread(
             analyze_document_layout,
             image.path,
             layout_url=LAYOUT_SERVICE_URL,
             detector_url=DET_SERVICE_URL,
+            client=model_client,
             request_id=request_id(request),
             expand_text_rois=expand,
             auto_roi_mode=mode,
@@ -101,8 +98,8 @@ async def document_layouts(request: Request) -> dict:
 @app.get("/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
     await asyncio.gather(
-        asyncio.to_thread(get_readiness, LAYOUT_SERVICE_URL, request_id=request_id(request)),
-        asyncio.to_thread(get_readiness, DET_SERVICE_URL, request_id=request_id(request)),
+        asyncio.to_thread(model_client.readiness, LAYOUT_SERVICE_URL, request_id=request_id(request)),
+        asyncio.to_thread(model_client.readiness, DET_SERVICE_URL, request_id=request_id(request)),
     )
     return success_response(
         request,

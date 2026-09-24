@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from core.settings import runtime_settings
 
 
 def model_dir(variable: str) -> str | None:
@@ -21,4 +22,4 @@ def model_dir(variable: str) -> str | None:
 
 
 def device() -> str:
-    return os.getenv("MODEL_DEVICE", "gpu:0")
+    return runtime_settings.model_device

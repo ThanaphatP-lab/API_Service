@@ -5,8 +5,11 @@ import os
 
 from fastapi import Request
 
-from models.rec_model import get_recognizer, infer_recognition, infer_recognition_batch
-from shared.api import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, add_readiness_route, create_app, parse_image_request, run_image_inference
+from inference.text_recognition import get_model, infer, infer_batch
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.readiness import add_readiness_route
+from core.app_factory import create_app
+from core.errors import run_image_inference
 from shared.contracts import success_response
 from shared.model_variants import resolve_model_variant
 
@@ -39,10 +42,7 @@ async def predict(
             str(selected.model_dir) if selected.model_dir is not None else "<official-model-cache>",
             selected.model_dir is not None,
         )
-        payload = run_image_inference(
-            lambda path: infer_recognition(path, selected.version, selected.variant),
-            image.path,
-        )
+        payload = run_image_inference(lambda path: infer(path, selected), image.path)
         response_selection = payload.get("model_selection", selected.public_dict())
         logger.info(
             "Recognition response endpoint=single version=%s variant=%s response_model=%s model_name=%s model_dir=%s local_weights=%s result_count=%s",
@@ -87,11 +87,7 @@ async def recognize_batch(
             len(images.paths),
         )
         payload = run_image_inference(
-            lambda _: infer_recognition_batch(
-                [str(path) for path in images.paths],
-                selected.version,
-                selected.variant,
-            ),
+            lambda _: infer_batch([str(path) for path in images.paths], selected),
             images.paths[0],
         )
         response_selection = payload.get("model_selection", selected.public_dict())
@@ -117,4 +113,7 @@ async def recognize_batch(
         images.cleanup()
 
 
-add_readiness_route(app, get_recognizer)
+add_readiness_route(
+    app,
+    lambda: get_model(resolve_model_variant("recognition", None, "baseline")),
+)

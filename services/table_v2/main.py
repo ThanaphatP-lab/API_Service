@@ -5,18 +5,15 @@ from typing import Any
 
 from fastapi import Request
 
-from models.table_v2_model import (
-    get_table_v2,
-    infer_table_v2,
-    resolve_table_v2_selection,
+from inference.table_recognition_v2 import (
+    get_model,
+    infer,
+    selection_from_settings,
 )
-from shared.api import (
-    IMAGE_REQUEST_OPENAPI,
-    add_readiness_route,
-    create_app,
-    parse_image_request,
-    run_image_inference,
-)
+from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.readiness import add_readiness_route
+from core.app_factory import create_app
+from core.errors import run_image_inference
 from shared.contracts import success_response
 
 
@@ -54,7 +51,7 @@ async def predict(
         )
         selected_detection_model = det_model or image.fields.get("det_model")
         selected_recognition_model = rec_model or image.fields.get("rec_model")
-        selection = resolve_table_v2_selection(
+        selection = selection_from_settings(
             selected_version,
             str(selected_model),
             detection_model=(
@@ -84,12 +81,7 @@ async def predict(
             ),
         )
         payload = run_image_inference(
-            lambda path: infer_table_v2(
-                path,
-                selection.version,
-                detection_model=selection.detection.variant,
-                recognition_model=selection.recognition.variant,
-            ),
+            lambda path: infer(path, selection),
             image.path,
         )
         return success_response(
@@ -103,4 +95,4 @@ async def predict(
         image.cleanup()
 
 
-add_readiness_route(app, get_table_v2)
+add_readiness_route(app, lambda: get_model(selection_from_settings()))

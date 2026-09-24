@@ -317,12 +317,14 @@ Receiver ต้องคง `MAX_BATCH_IMAGES` และ `MAX_BATCH_UPLOAD_MB` �
 
 ### Phase 2 — แยก Model Loader
 
-- [ ] ย้าย Layout loader จาก service ไป `inference/layout_detection.py`
-- [ ] ย้าย Table structure loader ไป `inference/table_structure.py`
-- [ ] ย้าย SigLIP loader ไป `inference/siglip.py`
-- [ ] ย้าย PaddleOCR loader ไป `inference/paddle_ocr.py`
-- [ ] ย้าย TableV2 loader ไป `inference/table_recognition_v2.py`
-- [ ] ทำ interface ของ inference modules ให้รูปแบบเดียวกัน
+- [x] ย้าย Layout loader จาก service ไป `inference/layout_detection.py`
+- [x] ย้าย DET/REC loaders จาก `models/` ไป `inference/text_detection.py` และ `inference/text_recognition.py`
+- [x] ย้าย Table structure loader ไป `inference/table_structure.py`
+- [x] ย้าย SigLIP loader ไป `inference/siglip.py`
+- [x] ย้าย PaddleOCR loader ไป `inference/paddle_ocr.py`
+- [x] ย้าย TableV2 loader ไป `inference/table_recognition_v2.py`
+- [x] ทำ interface ของ inference modules ให้ใช้ `selection_from_settings`, `get_model`, `infer` และ `infer_batch` ตามความเหมาะสม
+- [x] เก็บ `models/*.py` เดิมเป็น compatibility wrappers โดยไม่มี loader logic ซ้ำ
 
 รูปแบบเป้าหมาย:
 
@@ -337,22 +339,34 @@ def infer(image_path: str, selection: ModelSelection) -> dict:
 
 ### Phase 3 — แยก Pipeline Workflow
 
-- [ ] แยก polygon crop ออกจาก OCR orchestration
-- [ ] แยก legacy response adapter ออกจาก OCR workflow
-- [ ] ย้าย upstream HTTP calls ไป typed client
-- [ ] แยก layout geometry ออกจาก remote orchestration
-- [ ] แยก `table_pipeline.py` ตาม grid, parser, assignment, quality และ assembly
-- [ ] ทำ pipeline functions ให้รับ dependency ผ่าน argument แทน import global URL
+- [x] แยก polygon crop ออกจาก OCR orchestration
+- [x] แยก legacy response adapter ออกจาก OCR workflow
+- [x] ย้าย upstream HTTP calls ไป typed client
+- [x] แยก layout geometry ออกจาก remote orchestration
+- [x] แยก `table_pipeline.py` ตาม grid, parser, assignment, quality และ assembly
+- [x] ทำ pipeline functions ให้รับ dependency ผ่าน argument แทน import global URL
+
+Implementation boundaries and compatibility notes: `pipelines/README.md`.
+Validation includes offline workflow, transport, contract and regression tests;
+Linux/GPU output and performance comparison remains a deployment gate.
 
 ### Phase 4 — แยก Core Infrastructure
 
-- [ ] ย้าย `singleflight_lru_cache` จาก `shared/api.py` ไป `core/cache.py`
-- [ ] แยก request/image parsing ไป `core/request_parsing.py`
-- [ ] แยก auth และ token validation ไป `core/auth.py`
-- [ ] แยก request/body/batch limits ไป `core/limits.py`
-- [ ] แยก readiness helper ไป `core/readiness.py`
-- [ ] แยก FastAPI factory และ middleware ไป `core/app_factory.py`
-- [ ] ทำ typed settings แทน `os.getenv()` ที่กระจายอยู่หลายไฟล์
+- [x] ย้าย `singleflight_lru_cache` จาก `shared/api.py` ไป `core/cache.py`
+- [x] แยก request/image parsing ไป `core/request_parsing.py`
+- [x] แยก auth และ token validation ไป `core/auth.py`
+- [x] แยก request/body/batch limits ไป `core/limits.py`
+- [x] แยก readiness helper ไป `core/readiness.py`
+- [x] แยก FastAPI factory และ middleware ไป `core/app_factory.py`
+- [x] ทำ typed settings แทน `os.getenv()` ที่กระจายอยู่หลายไฟล์
+
+Implementation and settings lifecycle: `core/README.md`.
+Validation: 89 tests passed; syntax checked across 53 core/shared/service/inference files.
+Compatibility imports are retained in `shared/api.py`. Typed settings cover infrastructure,
+service URLs and pipeline runtime options; model-specific configuration stays with its owner.
+Intentional fix: clean up already-written images when a later batch image fails validation.
+No port, model-cache size, model-selection or inference-pipeline changes in this phase.
+Linux/GPU validation remains required before production rollout.
 
 ### Phase 5 — Service Topology Cleanup
 

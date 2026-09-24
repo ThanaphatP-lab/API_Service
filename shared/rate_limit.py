@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
 import threading
 import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass
 
 from fastapi import Request
+from core.settings import RateLimitSettings, runtime_settings
 
 
 @dataclass(frozen=True)
@@ -21,9 +21,10 @@ class InMemoryRateLimiter:
     """A process-local sliding-window limiter for a single API worker."""
 
     def __init__(self) -> None:
-        self.limit = max(0, int(os.getenv("RATE_LIMIT_REQUESTS", "120")))
-        self.window = max(1, int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")))
-        self.max_keys = max(100, int(os.getenv("MAX_RATE_LIMIT_KEYS", "10000")))
+        settings = RateLimitSettings()
+        self.limit = settings.requests
+        self.window = settings.window_seconds
+        self.max_keys = settings.max_keys
         self._requests: OrderedDict[str, deque[float]] = OrderedDict()
         self._lock = threading.Lock()
 
@@ -57,7 +58,7 @@ class InMemoryRateLimiter:
 
 
 def client_key(request: Request) -> str:
-    if os.getenv("TRUST_PROXY_HEADERS", "false").strip().lower() in {"1", "true", "yes", "on"}:
+    if runtime_settings.trust_proxy_headers:
         forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
         if forwarded:
             return forwarded

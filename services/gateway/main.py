@@ -3,13 +3,16 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from core.service_settings import ServiceURLs
+from core.settings import runtime_settings
 import time
 from collections.abc import Callable
 from typing import Any
 
 from fastapi import Request
 
-from shared.api import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, create_app, parse_image_request
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.app_factory import create_app
 from shared.contracts import ModelAPIError, request_id, success_response
 from shared.model_variants import normalize_model_variant, normalize_model_version
 from shared.upstream import get_readiness, post_images
@@ -18,16 +21,17 @@ from shared.upstream import get_readiness, post_images
 logger = logging.getLogger("uvicorn.error")
 SERVICE_NAME = "model-api-gateway"
 MODEL_NAME = "pipeline-router-v1"
-LAYOUT_PIPELINE_URL = os.getenv("LAYOUT_PIPELINE_URL", "http://localhost:8010")
-DET_V5_URL = os.getenv("DET_V5_URL", "http://localhost:8002")
-DET_V6_URL = os.getenv("DET_V6_URL", "http://localhost:8003")
-REC_SERVICE_URL = os.getenv("REC_SERVICE_URL", "http://localhost:8004")
-OCR_CUSTOM_URL = os.getenv("OCR_CUSTOM_URL", "http://localhost:8005")
-OCR_PADDLE_URL = os.getenv("OCR_PADDLE_URL", "http://localhost:8006")
-TABLE_PIPELINE_URL = os.getenv("TABLE_PIPELINE_URL", "http://localhost:8011")
-TABLE_MODEL_URL = os.getenv("TABLE_MODEL_URL", "http://localhost:8013")
-SIGLIP_URL = os.getenv("SIGLIP_URL", "http://localhost:8009")
-IMAGE_VERIFICATION_URL = os.getenv("IMAGE_VERIFICATION_URL", "http://localhost:8012")
+service_urls = ServiceURLs()
+LAYOUT_PIPELINE_URL = service_urls.layout_pipeline_url
+DET_V5_URL = service_urls.det_v5_url
+DET_V6_URL = service_urls.det_v6_url
+REC_SERVICE_URL = service_urls.rec_service_url
+OCR_CUSTOM_URL = service_urls.ocr_custom_url
+OCR_PADDLE_URL = service_urls.ocr_paddle_url
+TABLE_PIPELINE_URL = service_urls.table_pipeline_url
+TABLE_MODEL_URL = service_urls.table_model_url
+SIGLIP_URL = service_urls.siglip_url
+IMAGE_VERIFICATION_URL = service_urls.image_verification_url
 app = create_app(
     "Model API Gateway",
     MODEL_NAME,
@@ -59,10 +63,7 @@ def _pipeline_names(variable: str, *, default_all: bool = False) -> set[str]:
 
 
 def _readiness_timeout() -> float:
-    try:
-        return max(0.1, float(os.getenv("GATEWAY_READINESS_TIMEOUT_SECONDS", "10")))
-    except ValueError:
-        return 10.0
+    return runtime_settings.gateway_readiness_timeout
 
 
 def _text_detector_upstream(version: Any) -> str:

@@ -5,7 +5,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from pipeline import ocr_pipeline
+from pipelines.ocr import orchestrator as ocr_pipeline
 from services.ocr_pipeline_custom import main as custom_service
 from shared.upstream import chunked_paths
 
@@ -72,7 +72,8 @@ def test_remote_ocr_chunks_recognition_and_forwards_model_selection(monkeypatch,
             },
         }
 
-    monkeypatch.setattr(ocr_pipeline, "post_images", post_images)
+    class FakeClient:
+        infer = staticmethod(post_images)
 
     result = ocr_pipeline.predict_remote_ocr(
         source,
@@ -84,6 +85,7 @@ def test_remote_ocr_chunks_recognition_and_forwards_model_selection(monkeypatch,
         det_model="thai_det",
         rec_model="thai_rec",
         recognition_batch_size=2,
+        client=FakeClient(),
     )
 
     assert [call["count"] for call in calls] == [1, 2, 2, 1]

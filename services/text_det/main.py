@@ -5,8 +5,11 @@ import os
 
 from fastapi import Request
 
-from models.det_model import get_detector, infer_detection, infer_detection_batch
-from shared.api import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, add_readiness_route, create_app, parse_image_request, run_image_inference
+from inference.text_detection import get_model, infer, infer_batch
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.readiness import add_readiness_route
+from core.app_factory import create_app
+from core.errors import run_image_inference
 from shared.contracts import success_response
 from shared.model_variants import resolve_model_variant
 
@@ -38,10 +41,7 @@ async def predict(
             str(selected.model_dir) if selected.model_dir is not None else "<official-model-cache>",
             selected.model_dir is not None,
         )
-        payload = run_image_inference(
-            lambda path: infer_detection(path, selected.version, selected.variant),
-            image.path,
-        )
+        payload = run_image_inference(lambda path: infer(path, selected), image.path)
         response_selection = payload.get("model_selection", selected.public_dict())
         logger.info(
             "Detection response endpoint=single version=%s variant=%s response_model=%s model_name=%s model_dir=%s local_weights=%s region_count=%s",
@@ -86,11 +86,7 @@ async def predict_batch(
             len(images.paths),
         )
         payload = run_image_inference(
-            lambda _: infer_detection_batch(
-                [str(path) for path in images.paths],
-                selected.version,
-                selected.variant,
-            ),
+            lambda _: infer_batch([str(path) for path in images.paths], selected),
             images.paths[0],
         )
         response_selection = payload.get("model_selection", selected.public_dict())
@@ -123,4 +119,7 @@ async def predict_batch(
         images.cleanup()
 
 
-add_readiness_route(app, get_detector)
+add_readiness_route(
+    app,
+    lambda: get_model(resolve_model_variant("detection", None, "baseline")),
+)

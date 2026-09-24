@@ -2,37 +2,32 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
+from core.settings import runtime_settings
+from core.service_settings import ServiceURLs
 from typing import Any
 
 from fastapi import Request
 
-from pipeline.ocr_pipeline import direct_recognition_contract, predict_remote_ocr
-from shared.api import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, create_app, parse_image_request
+from pipelines.ocr.contracts import direct_recognition_contract
+from pipelines.ocr.orchestrator import predict_remote_ocr
+from clients.model_service_client import HTTPModelClient
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.app_factory import create_app
 from shared.contracts import ModelAPIError, request_id, success_response
 from shared.model_variants import normalize_model_variant, normalize_model_version
-from shared.upstream import get_readiness, post_images
 
 logger = logging.getLogger("uvicorn.error")
 MODEL_NAME = "PP-OCRv5_server_det + th_PP-OCRv5_mobile_rec"
 SERVICE_NAME = "custom-ocr-pipeline"
-DET_SERVICE_URL = os.getenv("DET_SERVICE_URL", "http://localhost:8002")
-REC_SERVICE_URL = os.getenv("REC_SERVICE_URL", "http://localhost:8004")
+service_urls = ServiceURLs()
+DET_SERVICE_URL = service_urls.det_service_url
+REC_SERVICE_URL = service_urls.rec_service_url
+model_client = HTTPModelClient()
 app = create_app("Custom Thai OCR Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
-def _positive_int_env(name: str, default: int) -> int:
-    try:
-        return max(1, int(os.getenv(name, str(default))))
-    except ValueError:
-        return default
-
-
 def _recognition_batch_size() -> int:
-    return min(
-        _positive_int_env("OCR_RECOGNITION_BATCH_SIZE", 64),
-        _positive_int_env("MAX_BATCH_IMAGES", 64),
-    )
+    return runtime_settings.recognition_batch_size
 
 
 def _ocr_selection(
@@ -94,6 +89,7 @@ async def predict(
             image.path,
             detector_url=DET_SERVICE_URL,
             recognizer_url=REC_SERVICE_URL,
+            client=model_client,
             request_id=request_id(request),
             version=selection["version"],
             model=str(selection["model"]),
@@ -132,7 +128,7 @@ async def recognize_only(
             REC_SERVICE_URL,
         )
         data = await asyncio.to_thread(
-            post_images,
+            model_client.infer,
             REC_SERVICE_URL,
             "/api/v1/text-recognitions",
             [image.path],
@@ -187,7 +183,7 @@ async def recognize_only_batch(
             len(images.paths),
         )
         data = await asyncio.to_thread(
-            post_images,
+            model_client.infer,
             REC_SERVICE_URL,
             "/api/v1/text-recognition-batches",
             images.paths,
@@ -230,8 +226,8 @@ async def recognize_only_batch(
 @app.get("/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
     await asyncio.gather(
-        asyncio.to_thread(get_readiness, DET_SERVICE_URL, request_id=request_id(request)),
-        asyncio.to_thread(get_readiness, REC_SERVICE_URL, request_id=request_id(request)),
+        asyncio.to_thread(model_client.readiness, DET_SERVICE_URL, request_id=request_id(request)),
+        asyncio.to_thread(model_client.readiness, REC_SERVICE_URL, request_id=request_id(request)),
     )
     return success_response(
         request,

@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import os
+from core.service_settings import ServiceURLs
 
 from fastapi import Request
 
-from pipeline.image_verification_pipeline import normalize_categories, verify_classification_targets
-from shared.api import IMAGE_REQUEST_OPENAPI, create_app, parse_image_request, parse_json_field
+from pipelines.verification.scoring import normalize_categories
+from pipelines.verification.orchestrator import verify_image
+from clients.model_service_client import HTTPModelClient
+from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_image_request, parse_json_field
+from core.app_factory import create_app
 from shared.contracts import ModelAPIError, request_id, success_response
-from shared.upstream import get_readiness, post_images
 
 
 MODEL_NAME = "SigLIP category verification"
 SERVICE_NAME = "image-verification-pipeline"
-SIGLIP_SERVICE_URL = os.getenv("SIGLIP_SERVICE_URL", "http://localhost:8009")
+service_urls = ServiceURLs()
+SIGLIP_SERVICE_URL = service_urls.siglip_service_url
+model_client = HTTPModelClient()
 app = create_app("Image Verification Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
@@ -37,23 +41,15 @@ async def image_verifications(request: Request) -> dict:
         categories = normalize_categories(
             parse_json_field(image.fields.get("categories"), field="categories", default=None)
         )
-        classification = await asyncio.to_thread(
-            post_images,
-            SIGLIP_SERVICE_URL,
-            "/api/v1/image-classifications",
-            [image.path],
-            fields={"labels": [item["prompt"] for item in categories]},
+        result = await asyncio.to_thread(
+            verify_image,
+            image.path,
+            targets=targets,
+            categories=categories,
+            classifier_url=SIGLIP_SERVICE_URL,
+            client=model_client,
             request_id=request_id(request),
         )
-        results = verify_classification_targets(
-            target_values=targets,
-            categories=categories,
-            classification=classification,
-        )
-        selected = next((item for item in results if item.get("passed")), None)
-        if selected is None:
-            selected = max(results, key=lambda item: float(item.get("evidence_score") or 0.0))
-        result = {**selected, "verifications": results, "requested_categories": targets}
         return success_response(request, result, service=SERVICE_NAME, model=MODEL_NAME)
     finally:
         image.cleanup()
@@ -61,7 +57,7 @@ async def image_verifications(request: Request) -> dict:
 
 @app.get("/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
-    await asyncio.to_thread(get_readiness, SIGLIP_SERVICE_URL, request_id=request_id(request))
+    await asyncio.to_thread(model_client.readiness, SIGLIP_SERVICE_URL, request_id=request_id(request))
     return success_response(
         request,
         {"status": "ready", "upstreams": [SIGLIP_SERVICE_URL]},
