@@ -33,6 +33,7 @@ fi
 : "${LAYOUT_PORT:=8001}"
 : "${DET_V5_PORT:=8002}"
 : "${DET_V6_PORT:=8003}"
+: "${DETECTION_PORT:=$DET_V5_PORT}"
 : "${REC_TH_PORT:=8004}"
 : "${OCR_CUSTOM_PORT:=8005}"
 : "${OCR_PADDLE_PORT:=8006}"
@@ -61,12 +62,12 @@ mkdir -p "$RUN_DIR" "$LOG_DIR" "$CACHE_DIR" "$MODEL_TMP_DIR"
 chmod 700 "$RUN_DIR" "$LOG_DIR" "$CACHE_DIR" "$MODEL_TMP_DIR"
 
 ALL_SERVICES=(
-  layout det-v5 det-v6 rec-th table-wired table-wireless table-v2 siglip
+  layout detection rec-th table-wired table-wireless table-v2 siglip
   ocr-custom ocr-paddle layout-pipeline table-pipeline image-verification gateway
 )
 ALL_WITH_DEMO=("${ALL_SERVICES[@]}" demo)
 CORE_SERVICES=(
-  layout det-v5 rec-th table-wired table-wireless siglip
+  layout detection rec-th table-wired table-wireless siglip
   ocr-custom layout-pipeline table-pipeline image-verification gateway
 )
 
@@ -83,32 +84,35 @@ Usage:
 
 Profiles:
   core-stack        default production stack using split polygon det + rec OCR
-  ocr-custom-stack  det-v5 + rec-th + ocr-custom + gateway
+  ocr-custom-stack  detection (v5/v6) + rec-th + ocr-custom + gateway
   ocr-paddle-stack  ocr-paddle + gateway
-  layout-stack      layout + det-v5 + layout-pipeline + gateway
-  table-stack       det-v5 + rec-th + ocr-custom + table models/pipeline + gateway
+  layout-stack      layout + detection + layout-pipeline + gateway
+  table-stack       detection + rec-th + ocr-custom + table models/pipeline + gateway
   table-v2-stack    notebook TableRecognitionPipelineV2 + gateway (no split table models)
   verification-stack siglip + image-verification + gateway
   all               every model/pipeline + gateway (Demo is started separately)
 
 Services:
-  layout det-v5 det-v6 rec-th ocr-custom ocr-paddle table-wired
+  layout detection rec-th ocr-custom ocr-paddle table-wired
   table-wireless table-v2 siglip layout-pipeline table-pipeline image-verification
   gateway demo
+
+Legacy det-v5/det-v6 names remain for stop/status/logs migration only.
+Use detection for one process serving version=5/6 and model variants.
 EOF
 }
 
 target_services() {
   case "${1:-all}" in
     core-stack) echo "${CORE_SERVICES[*]}" ;;
-    ocr-custom-stack) echo "det-v5 rec-th ocr-custom gateway" ;;
+    ocr-custom-stack) echo "detection rec-th ocr-custom gateway" ;;
     ocr-paddle-stack) echo "ocr-paddle gateway" ;;
-    layout-stack) echo "layout det-v5 layout-pipeline gateway" ;;
-    table-stack) echo "det-v5 rec-th ocr-custom table-wired table-wireless table-pipeline gateway" ;;
+    layout-stack) echo "layout detection layout-pipeline gateway" ;;
+    table-stack) echo "detection rec-th ocr-custom table-wired table-wireless table-pipeline gateway" ;;
     table-v2-stack) echo "table-v2 gateway" ;;
     verification-stack) echo "siglip image-verification gateway" ;;
     all) echo "${ALL_WITH_DEMO[*]}" ;;
-    layout|det-v5|det-v6|rec-th|ocr-custom|ocr-paddle|table-wired|table-wireless|table-v2|siglip|layout-pipeline|table-pipeline|image-verification|gateway|demo) echo "$1" ;;
+    layout|detection|det-v5|det-v6|rec-th|ocr-custom|ocr-paddle|table-wired|table-wireless|table-v2|siglip|layout-pipeline|table-pipeline|image-verification|gateway|demo) echo "$1" ;;
     *)
       echo "[ERROR] Unknown service/profile: $1" >&2
       usage >&2
@@ -127,11 +131,11 @@ start_target_services() {
 
 profile_pipelines() {
   case "$1" in
-    core-stack) echo "layout,ocr-custom,table,image-verification,text-det-v5,text-recognition,siglip" ;;
-    ocr-custom-stack) echo "ocr-custom,text-det-v5,text-recognition" ;;
+    core-stack) echo "layout,ocr-custom,table,image-verification,text-detection,text-recognition,siglip" ;;
+    ocr-custom-stack) echo "ocr-custom,text-detection,text-recognition" ;;
     ocr-paddle-stack) echo "ocr-paddle" ;;
-    layout-stack) echo "layout,text-det-v5" ;;
-    table-stack) echo "table,text-det-v5,text-recognition" ;;
+    layout-stack) echo "layout,text-detection" ;;
+    table-stack) echo "table,text-detection,text-recognition" ;;
     table-v2-stack) echo "table-model" ;;
     verification-stack) echo "image-verification,siglip" ;;
     all) echo "all" ;;
@@ -142,6 +146,7 @@ profile_pipelines() {
 service_port() {
   case "$1" in
     layout) echo "$LAYOUT_PORT" ;;
+    detection) echo "$DETECTION_PORT" ;;
     det-v5) echo "$DET_V5_PORT" ;;
     det-v6) echo "$DET_V6_PORT" ;;
     rec-th) echo "$REC_TH_PORT" ;;
@@ -162,7 +167,7 @@ service_port() {
 service_module() {
   case "$1" in
     layout) echo "services.layout.main:app" ;;
-    det-v5|det-v6) echo "services.text_det.main:app" ;;
+    detection|det-v5|det-v6) echo "services.text_det.main:app" ;;
     rec-th) echo "services.text_rec.main:app" ;;
     ocr-custom) echo "services.ocr_pipeline_custom.main:app" ;;
     ocr-paddle) echo "services.ocr_pipeline_paddle.main:app" ;;
@@ -179,7 +184,7 @@ service_module() {
 
 service_python() {
   case "$1" in
-    layout|det-v5|det-v6|rec-th|ocr-paddle|table-wired|table-wireless|table-v2) echo "$PADDLE_PYTHON" ;;
+    layout|detection|det-v5|det-v6|rec-th|ocr-paddle|table-wired|table-wireless|table-v2) echo "$PADDLE_PYTHON" ;;
     siglip) echo "$SIGLIP_PYTHON" ;;
     *) echo "$API_PYTHON" ;;
   esac
@@ -303,7 +308,8 @@ print_check() {
 export_service_environment() {
   local service="$1"
   export LAYOUT_MODEL_DIR="${LAYOUT_MODEL_DIR:-$ROOT/weights/layout}"
-  export DET_SERVICE_URL="${DET_SERVICE_URL:-http://127.0.0.1:$DET_V5_PORT}"
+  export TEXT_DETECTION_URL="${TEXT_DETECTION_URL:-http://127.0.0.1:$DETECTION_PORT}"
+  export DET_SERVICE_URL="$TEXT_DETECTION_URL"
   export REC_SERVICE_URL="${REC_SERVICE_URL:-http://127.0.0.1:$REC_TH_PORT}"
   export TABLE_WIRED_SERVICE_URL="${TABLE_WIRED_SERVICE_URL:-http://127.0.0.1:$TABLE_WIRED_PORT}"
   export TABLE_WIRELESS_SERVICE_URL="${TABLE_WIRELESS_SERVICE_URL:-http://127.0.0.1:$TABLE_WIRELESS_PORT}"
@@ -318,8 +324,8 @@ export_service_environment() {
   export IMAGE_VERIFICATION_URL="${IMAGE_VERIFICATION_URL:-http://127.0.0.1:$IMAGE_VERIFICATION_PORT}"
   export GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:$GATEWAY_PORT}"
   export LAYOUT_URL="${LAYOUT_URL:-http://127.0.0.1:$LAYOUT_PORT}"
-  export DET_V5_URL="${DET_V5_URL:-http://127.0.0.1:$DET_V5_PORT}"
-  export DET_V6_URL="${DET_V6_URL:-http://127.0.0.1:$DET_V6_PORT}"
+  export DET_V5_URL="$TEXT_DETECTION_URL"
+  export DET_V6_URL="$TEXT_DETECTION_URL"
   export REC_TH_URL="${REC_TH_URL:-http://127.0.0.1:$REC_TH_PORT}"
   export TABLE_WIRED_URL="${TABLE_WIRED_URL:-http://127.0.0.1:$TABLE_WIRED_PORT}"
   export TABLE_WIRELESS_URL="${TABLE_WIRELESS_URL:-http://127.0.0.1:$TABLE_WIRELESS_PORT}"
@@ -332,15 +338,12 @@ export_service_environment() {
   fi
 
   case "$service" in
-    det-v5)
-      export DET_MODEL_NAME=PP-OCRv5_server_det
-      export DET_MODEL_VERSION=v5
-      export DET_MODEL_DIR="${DET_V5_MODEL_DIR:-$ROOT/weights/detection/det-v5}"
-      ;;
-    det-v6)
-      export DET_MODEL_NAME=PP-OCRv6_medium_det
-      export DET_MODEL_VERSION=v6
-      export DET_MODEL_DIR="${DET_V6_MODEL_DIR:-$ROOT/weights/detection/det-v6}"
+    detection)
+      # Registry owns model names/directories for BOTH versions. Do not impose
+      # the old per-process DET_MODEL_NAME / DET_MODEL_DIR baseline overrides.
+      unset DET_MODEL_NAME DET_MODEL_DIR
+      export DET_MODEL_VERSION="${DET_MODEL_VERSION:-v5}"
+      export MODEL_VARIANTS_CONFIG="${MODEL_VARIANTS_CONFIG:-$ROOT/model_variants.json}"
       ;;
     rec-th)
       export REC_MODEL_NAME=th_PP-OCRv5_mobile_rec
@@ -387,6 +390,14 @@ wait_for_health() {
 
 start_service() {
   local service="$1"
+  if [[ "$service" == "det-v5" || "$service" == "det-v6" ]]; then
+    echo "[ERROR] Use 'start detection'; select version/model in each API request." >&2
+    return 1
+  fi
+  if [[ "$service" == "detection" ]] && { service_running det-v5 || service_running det-v6; }; then
+    echo "[ERROR] Stop legacy det-v5 and det-v6 before starting detection." >&2
+    return 1
+  fi
   if service_running "$service"; then
     echo "[SKIP] $service is already running (PID $(read_pid "$service"))."
     return 0
@@ -519,6 +530,7 @@ case "$action" in
     ;;
   stop)
     read -r -a services <<< "$(target_services "$target")"
+    [[ "$target" == "all" ]] && services+=(det-v5 det-v6)
     for ((index=${#services[@]}-1; index>=0; index--)); do stop_service "${services[index]}"; done
     ;;
   restart)
@@ -528,6 +540,7 @@ case "$action" in
   check) print_check ;;
   status)
     read -r -a services <<< "$(target_services "$target")"
+    [[ "$target" == "all" ]] && services+=(det-v5 det-v6)
     for service in "${services[@]}"; do status_service "$service"; done
     ;;
   readiness)

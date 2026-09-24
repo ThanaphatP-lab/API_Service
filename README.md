@@ -605,6 +605,10 @@ systemd/Supervisor for automatic start after reboot and crash recovery.
 
 ## Tests
 
+Phase 5 adds opt-in unified DET routing and configured service capabilities.
+Runtime consolidation and legacy-route removal are gated; see
+[topology migration and rollback](PHASE5_TOPOLOGY.md).
+
 Phase 4 separates API infrastructure into `core/`, with typed infrastructure
 settings and compatibility imports in `shared/api.py`.
 See [core boundaries and settings lifecycle](core/README.md).

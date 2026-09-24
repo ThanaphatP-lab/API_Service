@@ -370,12 +370,26 @@ Linux/GPU validation remains required before production rollout.
 
 ### Phase 5 — Service Topology Cleanup
 
+Linux launcher follow-up: `start detection` and all Linux profiles now use one
+DET process by explicit user request. The script exports the unified URL and
+leaves per-version weights to model_variants.json; legacy start commands are
+rejected, while stop/status/logs remain available for migration. The runtime
+resource acceptance checkbox below remains open until tested on the VPS.
+
 - [ ] รวม DET v5/v6 เป็น service เดียวถ้า resource test ผ่าน
-- [ ] ใช้ `TEXT_DETECTION_URL` เดียวแทน `DET_V5_URL`/`DET_V6_URL`
+- [x] รองรับ `TEXT_DETECTION_URL` แบบ opt-in พร้อม fallback ไป `DET_V5_URL`/`DET_V6_URL` เมื่อไม่ตั้งค่า
 - [ ] ให้ Gateway ส่ง leaf endpoint ตรงโดยไม่ผ่าน compatibility pipeline
 - [ ] เอา recognition-only pass-through ออกจาก OCR Custom หลังหมดผู้ใช้
-- [ ] แยก capability discovery/readiness ตาม service ที่เปิดจริง
+- [x] แยก capability discovery/readiness ตาม enabled services ที่ผู้ดูแลตั้งให้ตรงกับ deployment
 - [ ] เปลี่ยนชื่อ service ให้สื่อชนิด `leaf` หรือ `pipeline` ชัดเจน
+
+Phase 5 is partially complete. See `PHASE5_TOPOLOGY.md` for migration/rollback.
+101 offline tests passed. Discovery/readiness now expose descriptive service IDs
+and leaf/pipeline kinds while existing runtime names remain compatible.
+Versioned DET and REC routes are direct; unversioned DET retains its legacy layout
+response path. OCR Custom recognition routes are deprecated but not removed.
+Physical DET consolidation requires Linux/GPU resource evidence; endpoint removal
+requires a consumer/log audit. Neither gate has been established locally.
 
 ### Phase 6 — Remove deprecated code
 

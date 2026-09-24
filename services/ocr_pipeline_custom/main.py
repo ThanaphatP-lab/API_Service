@@ -20,7 +20,7 @@ logger = logging.getLogger("uvicorn.error")
 MODEL_NAME = "PP-OCRv5_server_det + th_PP-OCRv5_mobile_rec"
 SERVICE_NAME = "custom-ocr-pipeline"
 service_urls = ServiceURLs()
-DET_SERVICE_URL = service_urls.det_service_url
+DET_SERVICE_URL = service_urls.text_detection_url or service_urls.det_service_url
 REC_SERVICE_URL = service_urls.rec_service_url
 model_client = HTTPModelClient()
 app = create_app("Custom Thai OCR Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
@@ -107,7 +107,7 @@ async def predict(
         image.cleanup()
 
 
-@app.post("/api/v1/text-recognitions", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/api/v1/text-recognitions", tags=["Pipeline"], deprecated=True, openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def recognize_only(
     request: Request,
     version: str | None = None,
@@ -122,7 +122,7 @@ async def recognize_only(
         if model is not None:
             fields["model"] = model
         logger.info(
-            "OCR Custom forwarding recognition endpoint=single version=%s variant=%s upstream=%s",
+            "Deprecated OCR Custom recognition pass-through endpoint=single version=%s variant=%s upstream=%s",
             fields.get("version", "<service-default>"),
             fields.get("model", "baseline"),
             REC_SERVICE_URL,
@@ -161,7 +161,7 @@ async def recognize_only(
         image.cleanup()
 
 
-@app.post("/api/v1/text-recognition-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/api/v1/text-recognition-batches", tags=["Pipeline"], deprecated=True, openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def recognize_only_batch(
     request: Request,
     version: str | None = None,
@@ -176,7 +176,7 @@ async def recognize_only_batch(
         if model is not None:
             fields["model"] = model
         logger.info(
-            "OCR Custom forwarding recognition endpoint=batch version=%s variant=%s upstream=%s image_count=%s",
+            "Deprecated OCR Custom recognition pass-through endpoint=batch version=%s variant=%s upstream=%s image_count=%s",
             fields.get("version", "<service-default>"),
             fields.get("model", "baseline"),
             REC_SERVICE_URL,

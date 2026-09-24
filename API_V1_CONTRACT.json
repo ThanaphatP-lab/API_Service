@@ -11,7 +11,7 @@
   "public_endpoints": [
     {"method": "GET", "path": "/api/v1/health", "success_data": ["status", "model", "device"]},
     {"method": "GET", "path": "/api/v1/readiness", "success_data": ["status", "summary", "services"]},
-    {"method": "GET", "path": "/api/v1/services", "success_data": ["document_layouts", "ocr_results"]},
+    {"method": "GET", "path": "/api/v1/services", "success_data": ["document_layouts", "ocr_results", "capabilities", "detection_topology"]},
     {"method": "POST", "path": "/api/v1/document-layouts", "success_data": []},
     {"method": "POST", "path": "/api/v1/ocr-results", "success_data": []},
     {"method": "POST", "path": "/api/v1/ocr-result-batches", "success_data": []},

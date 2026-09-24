@@ -5,6 +5,8 @@ import os
 
 @dataclass(frozen=True)
 class ServiceURLs:
+    # Opt-in only after the combined DET process passes Linux/GPU resource tests.
+    text_detection_url: str = field(default_factory=lambda: os.getenv("TEXT_DETECTION_URL", "").strip())
     layout_pipeline_url: str = field(default_factory=lambda: os.getenv("LAYOUT_PIPELINE_URL", "http://localhost:8010"))
     det_v5_url: str = field(default_factory=lambda: os.getenv("DET_V5_URL", "http://localhost:8002"))
     det_v6_url: str = field(default_factory=lambda: os.getenv("DET_V6_URL", "http://localhost:8003"))

@@ -67,9 +67,46 @@ chmod 600 .env.runtime
 Put the two different generated values into `MODEL_GATEWAY_API_KEY` and
 `INTERNAL_API_TOKEN`. Never commit `.env.runtime`. Set
 `GATEWAY_ENABLED_PIPELINES` to the profile actually deployed, for example
-`ocr-custom,text-det-v5,text-recognition`, or use `all` only when every
+`ocr-custom,text-detection,text-recognition`, or use `all` only when every
 pipeline and direct leaf is running. A named stack
 profile automatically overrides this value for the Gateway process it starts.
+
+### One detection service for both versions
+
+```bash
+./scripts/model-stack.sh start detection
+./scripts/model-stack.sh status detection
+./scripts/model-stack.sh logs detection
+```
+
+`detection` uses `DETECTION_PORT` (default 8002, falling back to an existing
+`DET_V5_PORT` setting). All Linux stack profiles now start only this detector.
+Requests select `version=5` / `version=6` and `model=baseline` / `model=thai_ft_v1`
+using the `detection` section in `model_variants.json`. Edit `model_dir` there to
+point to each exported inference directory. Restart detection after config changes.
+The launcher clears legacy DET_MODEL_NAME/DET_MODEL_DIR overrides for this service
+so they cannot silently override registry baseline weights. Move such overrides
+into model_variants.json before migrating. MODEL_VARIANTS_CONFIG can select another
+registry file; DET_MODEL_VERSION controls the default for requests without version.
+
+If upgrading an existing split deployment, use a maintenance window:
+
+```bash
+./scripts/model-stack.sh stop det-v5
+./scripts/model-stack.sh stop det-v6
+./scripts/model-stack.sh start detection
+./scripts/model-stack.sh restart gateway
+./scripts/model-stack.sh restart ocr-custom
+./scripts/model-stack.sh restart layout-pipeline
+```
+
+Restart only the pipelines actually deployed. Legacy names remain for stop/status/logs,
+but starting them is rejected with migration guidance. Existing processes are never
+stopped automatically. Stop/status all still include legacy PID files.
+The launcher exports TEXT_DETECTION_URL for Gateway and pipelines automatically;
+manually launched services must set it themselves. Windows launchers are unchanged.
+Readiness loads the default baseline only. Test both versions and intended variants
+under real GPU load: one port does not mean only one model occupies VRAM.
 
 Validate the host and configuration:
 

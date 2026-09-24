@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from core.service_settings import ServiceURLs
 from core.settings import runtime_settings
+from core.topology import SERVICE_DESCRIPTORS, capabilities, configured_services, validate_services
 import time
 from collections.abc import Callable
 from typing import Any
@@ -22,6 +22,7 @@ logger = logging.getLogger("uvicorn.error")
 SERVICE_NAME = "model-api-gateway"
 MODEL_NAME = "pipeline-router-v1"
 service_urls = ServiceURLs()
+TEXT_DETECTION_URL = service_urls.text_detection_url
 LAYOUT_PIPELINE_URL = service_urls.layout_pipeline_url
 DET_V5_URL = service_urls.det_v5_url
 DET_V6_URL = service_urls.det_v6_url
@@ -56,10 +57,16 @@ UPSTREAMS = {
 
 
 def _pipeline_names(variable: str, *, default_all: bool = False) -> set[str]:
-    raw = os.getenv(variable, "all" if default_all else "").strip().lower()
-    if raw in {"all", "*"}:
-        return set(UPSTREAMS)
-    return {item.strip() for item in raw.split(",") if item.strip()}
+    return configured_services(variable, _active_upstreams(), default_all=default_all)
+
+
+def _active_upstreams() -> dict[str, str]:
+    if not TEXT_DETECTION_URL:
+        return dict(UPSTREAMS)
+    return {
+        **{name: url for name, url in UPSTREAMS.items() if name not in {"text-det-v5", "text-det-v6"}},
+        "text-detection": TEXT_DETECTION_URL,
+    }
 
 
 def _readiness_timeout() -> float:
@@ -70,6 +77,8 @@ def _text_detector_upstream(version: Any) -> str:
     if version is None or not str(version).strip():
         return LAYOUT_PIPELINE_URL
     normalized = normalize_model_version(version)
+    if TEXT_DETECTION_URL:
+        return TEXT_DETECTION_URL
     detector_urls = {"v5": DET_V5_URL, "v6": DET_V6_URL}
     return detector_urls[normalized]
 
@@ -251,6 +260,9 @@ async def _forward_multiple(
 
 @app.get("/api/v1/services", tags=["Discovery"])
 def services(request: Request) -> dict[str, Any]:
+    available = _active_upstreams()
+    enabled = _pipeline_names("GATEWAY_ENABLED_PIPELINES", default_all=True)
+    required = _pipeline_names("GATEWAY_REQUIRED_PIPELINES")
     return success_response(
         request,
         {
@@ -267,6 +279,13 @@ def services(request: Request) -> dict[str, Any]:
             "table_model_results": "/api/v1/table-model-results",
             "image_classifications": "/api/v1/image-classifications",
             "image_verifications": "/api/v1/image-verifications",
+            "capabilities": capabilities(available, enabled, required),
+            "capability_status": "configured; use /api/v1/readiness for health",
+            "detection_topology": "unified" if TEXT_DETECTION_URL else "split",
+            "compatibility": {
+                "unversioned_detection": "layout-pipeline legacy response",
+                "route_map": "static API inventory; capabilities lists configured services",
+            },
         },
         service=SERVICE_NAME,
         model=MODEL_NAME,
@@ -527,34 +546,24 @@ async def image_classifications(request: Request) -> dict[str, Any]:
 
 @app.get("/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict[str, Any]:
+    available = _active_upstreams()
     enabled = _pipeline_names("GATEWAY_ENABLED_PIPELINES", default_all=True)
     required = _pipeline_names("GATEWAY_REQUIRED_PIPELINES")
-    unknown = sorted((enabled | required) - set(UPSTREAMS))
-    required_but_disabled = sorted(required - enabled)
-    if unknown or required_but_disabled or not enabled:
-        raise ModelAPIError(
-            503,
-            "GATEWAY_CONFIGURATION_ERROR",
-            "Gateway pipeline readiness configuration is invalid.",
-            details=[
-                {
-                    "unknown_pipelines": unknown,
-                    "required_but_disabled": required_but_disabled,
-                    "supported_upstreams": sorted(UPSTREAMS),
-                }
-            ],
-        )
+    validate_services(available, enabled, required)
 
     timeout = _readiness_timeout()
     results = await asyncio.gather(
         *(
-            _probe_pipeline(name, UPSTREAMS[name], current_request_id=request_id(request), timeout=timeout)
-            for name in UPSTREAMS
+            _probe_pipeline(name, available[name], current_request_id=request_id(request), timeout=timeout)
+            for name in available
             if name in enabled
         )
     )
     for result in results:
         result["required"] = result["name"] in required
+        descriptor = SERVICE_DESCRIPTORS[result["name"]]
+        result["service_id"] = descriptor.service_id
+        result["kind"] = descriptor.kind
 
     ready_count = sum(result["status"] == "ready" for result in results)
     failed_required = [result["name"] for result in results if result["required"] and result["status"] != "ready"]

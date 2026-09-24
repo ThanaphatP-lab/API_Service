@@ -17,7 +17,7 @@ MODEL_NAME = "PP-DocLayoutV3 + text-detection"
 SERVICE_NAME = "document-layout-pipeline"
 service_urls = ServiceURLs()
 LAYOUT_SERVICE_URL = service_urls.layout_service_url
-DET_SERVICE_URL = service_urls.det_service_url
+DET_SERVICE_URL = service_urls.text_detection_url or service_urls.det_service_url
 model_client = HTTPModelClient()
 app = create_app("Document Layout Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
