@@ -24,8 +24,6 @@ MODEL_NAME = "pipeline-router-v1"
 service_urls = ServiceURLs()
 TEXT_DETECTION_URL = service_urls.text_detection_url
 LAYOUT_PIPELINE_URL = service_urls.layout_pipeline_url
-DET_V5_URL = service_urls.det_v5_url
-DET_V6_URL = service_urls.det_v6_url
 REC_SERVICE_URL = service_urls.rec_service_url
 OCR_CUSTOM_URL = service_urls.ocr_custom_url
 OCR_PADDLE_URL = service_urls.ocr_paddle_url
@@ -49,8 +47,7 @@ UPSTREAMS = {
     "table": TABLE_PIPELINE_URL,
     "table-model": TABLE_MODEL_URL,
     "image-verification": IMAGE_VERIFICATION_URL,
-    "text-det-v5": DET_V5_URL,
-    "text-det-v6": DET_V6_URL,
+    "text-detection": TEXT_DETECTION_URL,
     "text-recognition": REC_SERVICE_URL,
     "siglip": SIGLIP_URL,
 }
@@ -61,12 +58,7 @@ def _pipeline_names(variable: str, *, default_all: bool = False) -> set[str]:
 
 
 def _active_upstreams() -> dict[str, str]:
-    if not TEXT_DETECTION_URL:
-        return dict(UPSTREAMS)
-    return {
-        **{name: url for name, url in UPSTREAMS.items() if name not in {"text-det-v5", "text-det-v6"}},
-        "text-detection": TEXT_DETECTION_URL,
-    }
+    return {**UPSTREAMS, "text-detection": TEXT_DETECTION_URL or service_urls.text_detection_url}
 
 
 def _readiness_timeout() -> float:
@@ -74,13 +66,9 @@ def _readiness_timeout() -> float:
 
 
 def _text_detector_upstream(version: Any) -> str:
-    if version is None or not str(version).strip():
-        return LAYOUT_PIPELINE_URL
-    normalized = normalize_model_version(version)
-    if TEXT_DETECTION_URL:
-        return TEXT_DETECTION_URL
-    detector_urls = {"v5": DET_V5_URL, "v6": DET_V6_URL}
-    return detector_urls[normalized]
+    if version is not None and str(version).strip():
+        normalize_model_version(version)
+    return TEXT_DETECTION_URL or service_urls.text_detection_url
 
 
 def _model_selection_fields(
@@ -218,6 +206,10 @@ async def _forward(
         resolved_fields = field_resolver(image.fields) if field_resolver is not None else {}
         fields = {**image.fields, **resolved_fields, **(extra_fields or {})}
         selected_upstream = upstream(fields) if callable(upstream) else upstream
+        if endpoint == "/api/v1/text-detections":
+            fields.pop("response_contract", None)
+            if not fields.get("version"):
+                fields["response_contract"] = "legacy-layout"
         data = await asyncio.to_thread(
             post_images,
             selected_upstream,
@@ -244,6 +236,10 @@ async def _forward_multiple(
         resolved_fields = field_resolver(images.fields) if field_resolver is not None else {}
         fields = {**images.fields, **resolved_fields, **(extra_fields or {})}
         selected_upstream = upstream(fields) if callable(upstream) else upstream
+        if endpoint == "/api/v1/text-detection-batches":
+            fields.pop("response_contract", None)
+            if not fields.get("version"):
+                fields["response_contract"] = "legacy-layout"
         data = await asyncio.to_thread(
             post_images,
             selected_upstream,
@@ -283,7 +279,7 @@ def services(request: Request) -> dict[str, Any]:
             "capability_status": "configured; use /api/v1/readiness for health",
             "detection_topology": "unified" if TEXT_DETECTION_URL else "split",
             "compatibility": {
-                "unversioned_detection": "layout-pipeline legacy response",
+                "unversioned_detection": "direct DET leaf with legacy response formatting",
                 "route_map": "static API inventory; capabilities lists configured services",
             },
         },

@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 
 rem Usage: scripts\run-service.cmd SERVICE
-rem Services: layout det-v5 det-v6 rec-th ocr-custom ocr-paddle table-wired table-wireless table-v2 siglip layout-pipeline table-pipeline image-verification gateway
+rem Services: layout detection rec-th ocr-custom ocr-paddle table-wired table-wireless table-v2 siglip layout-pipeline table-pipeline image-verification gateway
 
 set "SERVICE=%~1"
 set "ROOT=%~dp0.."
@@ -12,8 +12,7 @@ if "%SERVICE%"=="" goto :usage
 
 set "PYTHON=.venv-api312\Scripts\python.exe"
 if /I "%SERVICE%"=="layout" set "PYTHON=.venv-paddle312\Scripts\python.exe"
-if /I "%SERVICE%"=="det-v5" set "PYTHON=.venv-paddle312\Scripts\python.exe"
-if /I "%SERVICE%"=="det-v6" set "PYTHON=.venv-paddle312\Scripts\python.exe"
+if /I "%SERVICE%"=="detection" set "PYTHON=.venv-paddle312\Scripts\python.exe"
 if /I "%SERVICE%"=="rec-th" set "PYTHON=.venv-paddle312\Scripts\python.exe"
 if /I "%SERVICE%"=="ocr-paddle" set "PYTHON=.venv-paddle312\Scripts\python.exe"
 if /I "%SERVICE%"=="table-wired" set "PYTHON=.venv-paddle312\Scripts\python.exe"
@@ -39,8 +38,9 @@ if /I "%SERVICE%"=="gateway" if not "%GATEWAY_MAX_CONCURRENT_REQUESTS%"=="" set 
 if "%INTERNAL_SERVICE_HOST%"=="" set "INTERNAL_SERVICE_HOST=127.0.0.1"
 if "%GATEWAY_HOST%"=="" set "GATEWAY_HOST=127.0.0.1"
 if "%LAYOUT_PORT%"=="" set "LAYOUT_PORT=8001"
-if "%DET_V5_PORT%"=="" set "DET_V5_PORT=8002"
-if "%DET_V6_PORT%"=="" set "DET_V6_PORT=8003"
+if "%DETECTION_PORT%"=="" set "DETECTION_PORT=8002"
+if "%TEXT_DETECTION_URL%"=="" set "TEXT_DETECTION_URL=http://127.0.0.1:%DETECTION_PORT%"
+set "DET_SERVICE_URL=%TEXT_DETECTION_URL%"
 if "%REC_TH_PORT%"=="" set "REC_TH_PORT=8004"
 if "%OCR_CUSTOM_PORT%"=="" set "OCR_CUSTOM_PORT=8005"
 if "%OCR_PADDLE_PORT%"=="" set "OCR_PADDLE_PORT=8006"
@@ -59,19 +59,12 @@ if /I "%SERVICE%"=="layout" (
   goto :eof
 )
 
-if /I "%SERVICE%"=="det-v5" (
-  set "DET_MODEL_NAME=PP-OCRv5_server_det"
-  set "DET_MODEL_VERSION=v5"
-  set "DET_MODEL_DIR=%CD%\weights\detection\det-v5"
-  %PYTHON% -m uvicorn services.text_det.main:app --host %INTERNAL_SERVICE_HOST% --port %DET_V5_PORT% --workers 1
-  goto :eof
-)
-
-if /I "%SERVICE%"=="det-v6" (
-  set "DET_MODEL_NAME=PP-OCRv6_medium_det"
-  set "DET_MODEL_VERSION=v6"
-  set "DET_MODEL_DIR=%CD%\weights\detection\det-v6"
-  %PYTHON% -m uvicorn services.text_det.main:app --host %INTERNAL_SERVICE_HOST% --port %DET_V6_PORT% --workers 1
+if /I "%SERVICE%"=="detection" (
+  set "DET_MODEL_NAME="
+  set "DET_MODEL_DIR="
+  if "%DET_MODEL_VERSION%"=="" set "DET_MODEL_VERSION=v5"
+  if "%MODEL_VARIANTS_CONFIG%"=="" set "MODEL_VARIANTS_CONFIG=%CD%\model_variants.json"
+  %PYTHON% -m uvicorn services.text_det.main:app --host %INTERNAL_SERVICE_HOST% --port %DETECTION_PORT% --workers 1
   goto :eof
 )
 
@@ -84,7 +77,6 @@ if /I "%SERVICE%"=="rec-th" (
 )
 
 if /I "%SERVICE%"=="ocr-custom" (
-  if "%DET_SERVICE_URL%"=="" set "DET_SERVICE_URL=http://127.0.0.1:%DET_V5_PORT%"
   if "%REC_SERVICE_URL%"=="" set "REC_SERVICE_URL=http://127.0.0.1:%REC_TH_PORT%"
   %PYTHON% -m uvicorn services.ocr_pipeline_custom.main:app --host %INTERNAL_SERVICE_HOST% --port %OCR_CUSTOM_PORT% --workers 1
   goto :eof
@@ -129,7 +121,6 @@ if /I "%SERVICE%"=="siglip" (
 
 if /I "%SERVICE%"=="layout-pipeline" (
   if "%LAYOUT_SERVICE_URL%"=="" set "LAYOUT_SERVICE_URL=http://127.0.0.1:%LAYOUT_PORT%"
-  if "%DET_SERVICE_URL%"=="" set "DET_SERVICE_URL=http://127.0.0.1:%DET_V5_PORT%"
   %PYTHON% -m uvicorn services.layout_pipeline.main:app --host %INTERNAL_SERVICE_HOST% --port %LAYOUT_PIPELINE_PORT% --workers 1
   goto :eof
 )
@@ -150,8 +141,6 @@ if /I "%SERVICE%"=="image-verification" (
 
 if /I "%SERVICE%"=="gateway" (
   if "%LAYOUT_PIPELINE_URL%"=="" set "LAYOUT_PIPELINE_URL=http://127.0.0.1:%LAYOUT_PIPELINE_PORT%"
-  if "%DET_V5_URL%"=="" set "DET_V5_URL=http://127.0.0.1:%DET_V5_PORT%"
-  if "%DET_V6_URL%"=="" set "DET_V6_URL=http://127.0.0.1:%DET_V6_PORT%"
   if "%REC_SERVICE_URL%"=="" set "REC_SERVICE_URL=http://127.0.0.1:%REC_TH_PORT%"
   if "%OCR_CUSTOM_URL%"=="" set "OCR_CUSTOM_URL=http://127.0.0.1:%OCR_CUSTOM_PORT%"
   if "%OCR_PADDLE_URL%"=="" set "OCR_PADDLE_URL=http://127.0.0.1:%OCR_PADDLE_PORT%"
@@ -165,5 +154,5 @@ if /I "%SERVICE%"=="gateway" (
 
 echo [ERROR] Unknown service: %SERVICE%
 :usage
-echo Usage: scripts\run-service.cmd ^<layout^|det-v5^|det-v6^|rec-th^|ocr-custom^|ocr-paddle^|table-wired^|table-wireless^|table-v2^|siglip^|layout-pipeline^|table-pipeline^|image-verification^|gateway^>
+echo Usage: scripts\run-service.cmd ^<layout^|detection^|rec-th^|ocr-custom^|ocr-paddle^|table-wired^|table-wireless^|table-v2^|siglip^|layout-pipeline^|table-pipeline^|image-verification^|gateway^>
 exit /b 1

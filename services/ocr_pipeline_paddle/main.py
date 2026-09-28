@@ -15,7 +15,7 @@ from shared.contracts import success_response
 DET_MODEL = os.getenv("DET_MODEL_NAME", "PP-OCRv6_medium_det")
 REC_MODEL = os.getenv("REC_MODEL_NAME", "th_PP-OCRv5_mobile_rec")
 MODEL_NAME = f"{DET_MODEL} + {REC_MODEL}"
-SERVICE_NAME = "paddle-ocr-pipeline"
+SERVICE_NAME = "pipeline-ocr-paddle"
 app = create_app("PaddleOCR Thai OCR Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 

@@ -25,5 +25,4 @@ payload = infer(image_path, selection)
 | `table_recognition_v2.py` | `TableRecognitionPipelineV2` |
 | `siglip.py` | SigLIP processor/model runtime |
 
-`models/det_model.py`, `models/rec_model.py` และ `models/table_v2_model.py`
-เป็น compatibility wrappers ชั่วคราว ห้ามเพิ่ม logic ใหม่ในไฟล์เหล่านั้น
+Old models/ wrappers were removed in Phase 6. Import the owning inference module directly.

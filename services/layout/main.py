@@ -13,7 +13,7 @@ from core.errors import run_image_inference
 from shared.contracts import success_response
 
 MODEL_NAME = os.getenv("LAYOUT_MODEL_NAME", "PP-DocLayoutV3")
-SERVICE_NAME = "layout-model"
+SERVICE_NAME = "leaf-layout"
 app = create_app("PP-DocLayoutV3 API", MODEL_NAME, service_name=SERVICE_NAME)
 
 

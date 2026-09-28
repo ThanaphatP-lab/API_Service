@@ -14,7 +14,7 @@ from shared.contracts import ModelAPIError, success_response
 from shared.siglip_categories import siglip_prompts
 
 MODEL_NAME = os.getenv("SIGLIP_MODEL_NAME", "google/siglip-so400m-patch14-384")
-SERVICE_NAME = "siglip-classification-model"
+SERVICE_NAME = "leaf-image-classification"
 app = create_app("SigLIP Zero-shot Classification API", MODEL_NAME, service_name=SERVICE_NAME)
 
 

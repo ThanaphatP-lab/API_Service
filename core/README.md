@@ -12,10 +12,8 @@
 | `settings.py` | Typed runtime, upload/batch, rate-limit and layout settings |
 | `service_settings.py` | Typed service URL snapshots using existing environment names/defaults |
 
-New callers import from the owning core module. `shared/api.py` re-exports the
-original helpers for existing imports; it is not a second implementation.
-When monkeypatching internals in tests, patch their owning core module, not the
-compatibility facade.
+Import from the owning core module. The shared/api.py compatibility facade was
+removed in Phase 6. Tests patch the owning core module directly.
 
 ## Preserved behavior
 

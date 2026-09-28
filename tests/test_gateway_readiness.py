@@ -82,8 +82,7 @@ def test_gateway_readiness_checks_direct_leaf_dependencies(monkeypatch):
     assert response.status_code == 200
     assert response.json()["data"]["status"] == "ready"
     assert checked == [
-        gateway.DET_V5_URL,
-        gateway.DET_V6_URL,
+        gateway.TEXT_DETECTION_URL,
         gateway.REC_SERVICE_URL,
         gateway.SIGLIP_URL,
     ]
@@ -130,7 +129,7 @@ def test_text_detection_version_routes_directly_to_v5(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"selected": "v5"}
     assert forwarded == {
-        "upstream": gateway.DET_V5_URL,
+        "upstream": gateway.TEXT_DETECTION_URL,
         "endpoint": "/api/v1/text-detections",
     }
 
@@ -148,12 +147,12 @@ def test_text_detection_version_routes_directly_to_v6(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"selected": "v6"}
     assert forwarded == {
-        "upstream": gateway.DET_V6_URL,
+        "upstream": gateway.TEXT_DETECTION_URL,
         "endpoint": "/api/v1/text-detections",
     }
 
 
-def test_text_detection_without_version_keeps_layout_pipeline(monkeypatch):
+def test_text_detection_without_version_routes_directly_to_leaf(monkeypatch):
     forwarded = {}
 
     async def forward(request, *, upstream, endpoint, extra_fields=None, field_resolver=None):
@@ -167,7 +166,7 @@ def test_text_detection_without_version_keeps_layout_pipeline(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"selected": "configured-default"}
-    assert forwarded["upstream"] == gateway.LAYOUT_PIPELINE_URL
+    assert forwarded["upstream"] == gateway.TEXT_DETECTION_URL
 
 
 def test_text_detection_rejects_unknown_version():
@@ -193,7 +192,7 @@ def test_text_detection_forwards_model_variant_and_numeric_version(monkeypatch):
 
     assert response.status_code == 200
     assert forwarded == {
-        "upstream": gateway.DET_V6_URL,
+        "upstream": gateway.TEXT_DETECTION_URL,
         "endpoint": "/api/v1/text-detections",
         "extra_fields": {"version": "v6", "model": "thai_ft_v1"},
     }
@@ -220,7 +219,7 @@ def test_text_detection_uses_multipart_version_for_upstream_and_variant(monkeypa
 
     assert response.status_code == 200
     assert forwarded == {
-        "base_url": gateway.DET_V6_URL,
+        "base_url": gateway.TEXT_DETECTION_URL,
         "endpoint": "/api/v1/text-detections",
         "fields": {"version": "v6", "model": "baseline"},
         "multiple": False,

@@ -1,10 +1,18 @@
 # -----------------------------------------------------------------------------
 # Secrets and local environment configuration
 # -----------------------------------------------------------------------------
+# Git hygiene, not a production deployment manifest. Keep source, tests, docs,
+# requirements, model_variants.json and sanitized *.example files versioned.
 .env
 .env.*
+.envrc
 !.env.example
 !.env.*.example
+/secrets/
+/credentials/
+/.aws/
+/.ssh/
+/.netrc
 *.pem
 *.key
 *.p12
@@ -18,6 +26,7 @@ __pycache__/
 *$py.class
 .Python
 .pytest_cache/
+.pytest_tmp/
 .mypy_cache/
 .ruff_cache/
 .hypothesis/
@@ -25,6 +34,8 @@ __pycache__/
 .coverage.*
 htmlcov/
 coverage.xml
+junit.xml
+test-results/
 .tox/
 .nox/
 .venv/
@@ -46,13 +57,30 @@ dist/
 .tmp/
 tmp/
 temp/
-logs/
+logs/**
+!logs/**/
 *.log
 *.pid
 *.pid.lock
-baselines/
+baselines/**
+!baselines/**/
 outputs/
 artifacts/
+/uploads/
+/local-data/
+/reports/
+/scratch/
+*.log.*
+*.stackdump
+core.[0-9]*
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite3-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
 
 # Keep optional placeholders if these directories later need to exist in Git.
 !logs/.gitkeep
@@ -70,6 +98,7 @@ weights/**
 *.pdparams
 *.pdmodel
 *.pdopt
+*.pdiparams.info
 *.onnx
 *.engine
 *.safetensors
@@ -77,11 +106,16 @@ weights/**
 *.pth
 *.pt
 *.bin
+*.gguf
 
 # Paddle/PaddleX and Hugging Face caches
 .paddlex/
 .paddleocr/
 .huggingface/
+/checkpoints/
+/wandb/
+/mlruns/
+/runs/
 
 # -----------------------------------------------------------------------------
 # Notebook, editor, and operating-system files
@@ -89,6 +123,8 @@ weights/**
 .ipynb_checkpoints/
 .idea/
 .vscode/
+/.codex/
+/.agents/
 *.code-workspace
 *.swp
 *.swo
@@ -96,6 +132,9 @@ weights/**
 .DS_Store
 Thumbs.db
 Desktop.ini
+*.bak
+*.orig
+*.rej
 
 # -----------------------------------------------------------------------------
 # Local container overrides

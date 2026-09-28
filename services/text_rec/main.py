@@ -14,7 +14,7 @@ from shared.contracts import success_response
 from shared.model_variants import resolve_model_variant
 
 MODEL_NAME = os.getenv("REC_MODEL_NAME", "th_PP-OCRv5_mobile_rec")
-SERVICE_NAME = "thai-text-recognition-model"
+SERVICE_NAME = "leaf-text-recognition"
 app = create_app("Thai Text Recognition API", MODEL_NAME, service_name=SERVICE_NAME)
 logger = logging.getLogger("uvicorn.error")
 

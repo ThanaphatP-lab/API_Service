@@ -2,7 +2,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from shared.api import singleflight_lru_cache
+from core.cache import singleflight_lru_cache
 
 
 def test_singleflight_loader_runs_once_for_concurrent_cache_misses():

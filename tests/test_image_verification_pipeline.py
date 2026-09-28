@@ -1,6 +1,6 @@
 import pytest
 
-from pipeline.image_verification_pipeline import normalize_categories, verify_classification, verify_classification_targets
+from pipelines.verification.scoring import normalize_categories, verify_classification, verify_classification_targets
 
 
 def test_verification_preserves_original_binary_top_rank_rule():

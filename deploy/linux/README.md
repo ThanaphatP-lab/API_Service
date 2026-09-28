@@ -79,8 +79,8 @@ profile automatically overrides this value for the Gateway process it starts.
 ./scripts/model-stack.sh logs detection
 ```
 
-`detection` uses `DETECTION_PORT` (default 8002, falling back to an existing
-`DET_V5_PORT` setting). All Linux stack profiles now start only this detector.
+`detection` uses `DETECTION_PORT` (default 8002). All Linux stack profiles now
+start only this detector. Migrate any old DET_V5_PORT override to DETECTION_PORT.
 Requests select `version=5` / `version=6` and `model=baseline` / `model=thai_ft_v1`
 using the `detection` section in `model_variants.json`. Edit `model_dir` there to
 point to each exported inference directory. Restart detection after config changes.
@@ -89,22 +89,21 @@ so they cannot silently override registry baseline weights. Move such overrides
 into model_variants.json before migrating. MODEL_VARIANTS_CONFIG can select another
 registry file; DET_MODEL_VERSION controls the default for requests without version.
 
-If upgrading an existing split deployment, use a maintenance window:
+Stop old split processes using the previous launcher or your process manager
+BEFORE upgrading; the new launcher no longer recognizes their names. Then:
 
 ```bash
-./scripts/model-stack.sh stop det-v5
-./scripts/model-stack.sh stop det-v6
 ./scripts/model-stack.sh start detection
 ./scripts/model-stack.sh restart gateway
 ./scripts/model-stack.sh restart ocr-custom
 ./scripts/model-stack.sh restart layout-pipeline
 ```
 
-Restart only the pipelines actually deployed. Legacy names remain for stop/status/logs,
-but starting them is rejected with migration guidance. Existing processes are never
-stopped automatically. Stop/status all still include legacy PID files.
+Restart only deployed pipelines. Old launcher targets and PID management were
+removed; stop/status all cover only current services. These edits do not stop processes.
 The launcher exports TEXT_DETECTION_URL for Gateway and pipelines automatically;
-manually launched services must set it themselves. Windows launchers are unchanged.
+manually launched services must override the unified default for other addresses.
+Windows launchers now also support one `detection` process.
 Readiness loads the default baseline only. Test both versions and intended variants
 under real GPU load: one port does not mean only one model occupies VRAM.
 

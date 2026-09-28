@@ -14,15 +14,7 @@ from core.limits import check_batch_limits, check_request_size
 from core.readiness import add_readiness_route
 from core.service_settings import ServiceURLs
 from core.settings import limits_settings, runtime_settings
-from shared import api
 from shared.contracts import ModelAPIError
-
-
-def test_legacy_exports_are_same_implementations():
-    assert api.create_app is create_app
-    assert api.singleflight_lru_cache is singleflight_lru_cache
-    assert api.parse_image_request is request_parsing.parse_image_request
-    assert api.add_readiness_route is add_readiness_route
 
 
 def test_rotated_tokens_and_health_exemption(monkeypatch):

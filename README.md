@@ -605,18 +605,25 @@ systemd/Supervisor for automatic start after reboot and crash recovery.
 
 ## Tests
 
-Phase 5 adds opt-in unified DET routing and configured service capabilities.
-Runtime consolidation and legacy-route removal are gated; see
+Phase 5 defaults to one DET service for both versions on Linux and Windows.
+See [migration notes](PHASE5_TOPOLOGY.md) and [Phase 6 cleanup](PHASE6_CLEANUP.md).
+Deploy updated Gateway and DET together. Service metadata now uses `leaf-*` /
+`pipeline-*` names. OCR Custom recognition-only routes have been removed;
+use Gateway or REC directly. The former compatibility flag no longer restores them.
+`LEGACY_ENDPOINTS_ENABLED` now also controls `/v1/textdetection` and
+`/v1/textrecognition`; operational `/health` remains available.
+
+Phase 5 adds unified DET routing and configured service capabilities; see
 [topology migration and rollback](PHASE5_TOPOLOGY.md).
 
 Phase 4 separates API infrastructure into `core/`, with typed infrastructure
-settings and compatibility imports in `shared/api.py`.
+settings. The `shared/api.py` compatibility facade was removed in Phase 6.
 See [core boundaries and settings lifecycle](core/README.md).
 
 Phase 3 separates service routes, injectable upstream clients, pipeline workflows
 and geometry/parsing/scoring. See [pipeline boundaries](pipelines/README.md).
-The old `pipeline/` imports remain compatibility wrappers; API routes and model
-selection behavior are unchanged by this phase.
+The old `pipeline/` and `models/` wrappers were removed in Phase 6;
+import from `pipelines/`, `inference/` and `core/` instead.
 
 ```cmd
 .venv-api312\Scripts\python.exe -m pip install -r requirements-dev.txt

@@ -5,11 +5,9 @@ import os
 
 @dataclass(frozen=True)
 class ServiceURLs:
-    # Opt-in only after the combined DET process passes Linux/GPU resource tests.
-    text_detection_url: str = field(default_factory=lambda: os.getenv("TEXT_DETECTION_URL", "").strip())
+    # Unified DET is the default for manual launches as well as stack scripts.
+    text_detection_url: str = field(default_factory=lambda: os.getenv("TEXT_DETECTION_URL", "http://localhost:8002").strip() or "http://localhost:8002")
     layout_pipeline_url: str = field(default_factory=lambda: os.getenv("LAYOUT_PIPELINE_URL", "http://localhost:8010"))
-    det_v5_url: str = field(default_factory=lambda: os.getenv("DET_V5_URL", "http://localhost:8002"))
-    det_v6_url: str = field(default_factory=lambda: os.getenv("DET_V6_URL", "http://localhost:8003"))
     rec_service_url: str = field(default_factory=lambda: os.getenv("REC_SERVICE_URL", "http://localhost:8004"))
     ocr_custom_url: str = field(default_factory=lambda: os.getenv("OCR_CUSTOM_URL", "http://localhost:8005"))
     ocr_paddle_url: str = field(default_factory=lambda: os.getenv("OCR_PADDLE_URL", "http://localhost:8006"))

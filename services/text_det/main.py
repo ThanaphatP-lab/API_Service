@@ -12,9 +12,10 @@ from core.app_factory import create_app
 from core.errors import run_image_inference
 from shared.contracts import success_response
 from shared.model_variants import resolve_model_variant
+from pipelines.layout.contracts import format_legacy_detection
 
 MODEL_NAME = os.getenv("DET_MODEL_NAME", "PP-OCRv5_server_det")
-SERVICE_NAME = "text-detection-model"
+SERVICE_NAME = "leaf-text-detection"
 app = create_app("Text Detection API", MODEL_NAME, service_name=SERVICE_NAME)
 logger = logging.getLogger("uvicorn.error")
 
@@ -42,6 +43,8 @@ async def predict(
             selected.model_dir is not None,
         )
         payload = run_image_inference(lambda path: infer(path, selected), image.path)
+        if image.fields.get("response_contract") == "legacy-layout":
+            payload = format_legacy_detection(payload, image.paths)
         response_selection = payload.get("model_selection", selected.public_dict())
         logger.info(
             "Detection response endpoint=single version=%s variant=%s response_model=%s model_name=%s model_dir=%s local_weights=%s region_count=%s",
@@ -91,6 +94,8 @@ async def predict_batch(
         )
         response_selection = payload.get("model_selection", selected.public_dict())
         results = payload.get("results") or []
+        if images.fields.get("response_contract") == "legacy-layout":
+            payload = format_legacy_detection(payload, images.paths, multiple=True)
         region_count = sum(
             len(result.get("dt_polys") or [])
             for result in results

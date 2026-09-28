@@ -6,57 +6,20 @@ from core.service_settings import ServiceURLs
 
 from fastapi import Request
 
-from pipelines.layout.orchestrator import analyze_document_layout, detect_text_batch, detect_text_only
+from pipelines.layout.orchestrator import analyze_document_layout
 from clients.model_service_client import HTTPModelClient
-from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_bool, parse_image_request
+from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_bool, parse_image_request
 from core.app_factory import create_app
 from shared.contracts import request_id, success_response
 
 
 MODEL_NAME = "PP-DocLayoutV3 + text-detection"
-SERVICE_NAME = "document-layout-pipeline"
+SERVICE_NAME = "pipeline-document-layout"
 service_urls = ServiceURLs()
 LAYOUT_SERVICE_URL = service_urls.layout_service_url
 DET_SERVICE_URL = service_urls.text_detection_url or service_urls.det_service_url
 model_client = HTTPModelClient()
 app = create_app("Document Layout Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
-
-
-@app.post("/api/v1/text-detections", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
-async def text_detections(request: Request) -> dict:
-    image = await parse_image_request(request)
-    try:
-        result = await asyncio.to_thread(
-            detect_text_only,
-            image.path,
-            detector_url=DET_SERVICE_URL,
-            client=model_client,
-            request_id=request_id(request),
-        )
-        return success_response(request, result, service=SERVICE_NAME, model=MODEL_NAME)
-    finally:
-        image.cleanup()
-
-
-@app.post("/api/v1/text-detection-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
-async def text_detection_batches(request: Request) -> dict:
-    images = await parse_image_request(request, multiple=True)
-    try:
-        results = await asyncio.to_thread(
-            detect_text_batch,
-            images.paths,
-            detector_url=DET_SERVICE_URL,
-            client=model_client,
-            request_id=request_id(request),
-        )
-        return success_response(
-            request,
-            {"results": results, "count": len(results)},
-            service=SERVICE_NAME,
-            model=MODEL_NAME,
-        )
-    finally:
-        images.cleanup()
 
 
 @app.post("/api/v1/document-layouts", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)

@@ -11,46 +11,6 @@ from pipelines.ocr.polygon_crop import _crop_quad
 from pipelines.ocr.contracts import _value, _text_from_recognition, legacy_ocr_contract
 
 
-def predict_custom_ocr(image_path: str) -> dict[str, Any]:
-    """Detect text first, perspective-crop each polygon, then recognize it.
-
-    This intentionally keeps detection and recognition independent so each model
-    can be replaced with a local fine-tuned export without changing the API.
-    """
-    # Local fallback only. The production pipeline uses HTTP and therefore
-    # does not import Paddle in its lightweight orchestration environment.
-    from inference.text_detection import predict_detection
-    from inference.text_recognition import predict_recognition
-
-    detections = predict_detection(image_path)
-    image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError("OpenCV could not decode the uploaded image")
-
-    lines: list[dict[str, Any]] = []
-    for detection in detections:
-        polygons = _value(detection, "dt_polys") or []
-        scores = _value(detection, "dt_scores") or []
-        for index, polygon in enumerate(polygons):
-            crop = _crop_quad(image, polygon)
-            if crop is None or crop.size == 0:
-                continue
-            # TextRecognition accepts a NumPy BGR image, avoiding temporary crops.
-            recognized = predict_recognition(crop)
-            text, rec_score = _text_from_recognition(recognized[0]) if recognized else (None, None)
-            lines.append(
-                {
-                    "polygon": polygon,
-                    "det_score": scores[index] if index < len(scores) else None,
-                    "text": text,
-                    "rec_score": rec_score,
-                }
-            )
-    return legacy_ocr_contract(
-        lines,
-        engine="custom-det-rec",
-        detection=detections,
-    )
 
 
 def predict_remote_ocr(

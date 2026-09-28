@@ -14,7 +14,7 @@ from shared.contracts import ModelAPIError, request_id, success_response
 
 
 MODEL_NAME = "SigLIP category verification"
-SERVICE_NAME = "image-verification-pipeline"
+SERVICE_NAME = "pipeline-image-verification"
 service_urls = ServiceURLs()
 SIGLIP_SERVICE_URL = service_urls.siglip_service_url
 model_client = HTTPModelClient()

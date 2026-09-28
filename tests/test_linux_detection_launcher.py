@@ -64,22 +64,11 @@ MODEL_VARIANTS_CONFIG=/custom/variants.json
 DET_MODEL_VERSION=v6
 unset TEXT_DETECTION_URL
 export_service_environment detection
-printf '%s\\n' "$TEXT_DETECTION_URL" "$DET_SERVICE_URL" "$DET_V5_URL" "$DET_V6_URL" "$MODEL_VARIANTS_CONFIG" "$DET_MODEL_VERSION"
+printf '%s\\n' "$TEXT_DETECTION_URL" "$DET_SERVICE_URL" "$MODEL_VARIANTS_CONFIG" "$DET_MODEL_VERSION"
 ''')
-    assert lines == ["http://127.0.0.1:8123"] * 4 + ["/custom/variants.json", "v6"]
+    assert lines == ["http://127.0.0.1:8123"] * 2 + ["/custom/variants.json", "v6"]
 
 
-def test_legacy_starts_rejected_without_launching_anything():
-    assert shell('''
-if start_service det-v5; then exit 9; fi
-if start_service det-v6; then exit 9; fi
-echo rejected
-''') == ["rejected"]
-
-
-def test_old_managed_process_blocks_migration():
-    assert shell('''
-service_running() { [[ "$1" == "det-v6" ]]; }
-if start_service detection; then exit 9; fi
-echo blocked
-''') == ["blocked"]
+@pytest.mark.parametrize("name", ["det-v5", "det-v6"])
+def test_legacy_names_are_not_valid_targets(name):
+    assert shell(f'if target_services {name}; then exit 9; fi\necho rejected\n') == ["rejected"]

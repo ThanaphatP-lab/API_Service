@@ -370,34 +370,33 @@ Linux/GPU validation remains required before production rollout.
 
 ### Phase 5 — Service Topology Cleanup
 
-Linux launcher follow-up: `start detection` and all Linux profiles now use one
-DET process by explicit user request. The script exports the unified URL and
-leaves per-version weights to model_variants.json; legacy start commands are
-rejected, while stop/status/logs remain available for migration. The runtime
-resource acceptance checkbox below remains open until tested on the VPS.
+Linux and Windows launchers now use one DET process. User-confirmed resource
+acceptance is recorded below; no new GPU benchmark is claimed. Per-version
+weights remain in model_variants.json. Old launcher targets were removed in the approved Phase 6 cleanup.
 
-- [ ] รวม DET v5/v6 เป็น service เดียวถ้า resource test ผ่าน
-- [x] รองรับ `TEXT_DETECTION_URL` แบบ opt-in พร้อม fallback ไป `DET_V5_URL`/`DET_V6_URL` เมื่อไม่ตั้งค่า
-- [ ] ให้ Gateway ส่ง leaf endpoint ตรงโดยไม่ผ่าน compatibility pipeline
-- [ ] เอา recognition-only pass-through ออกจาก OCR Custom หลังหมดผู้ใช้
+- [x] รวม DET v5/v6 เป็น service เดียว โดยผู้ใช้ยืนยัน resource acceptance เมื่อ 2026-09-25
+- [x] ใช้ `TEXT_DETECTION_URL` เดียวเป็นค่าเริ่มต้นทั้ง launcher และ Gateway
+- [x] ให้ Gateway ส่ง leaf endpoint ตรง โดย DET ที่ไม่ส่ง version ใช้ legacy formatter ภายใน leaf
+- [x] ปิด recognition-only pass-through ใน OCR Custom โดยค่าเริ่มต้น และแยก rollback adapter หลังตรวจ backend ใน workspace
 - [x] แยก capability discovery/readiness ตาม enabled services ที่ผู้ดูแลตั้งให้ตรงกับ deployment
-- [ ] เปลี่ยนชื่อ service ให้สื่อชนิด `leaf` หรือ `pipeline` ชัดเจน
+- [x] เปลี่ยน metadata service names ให้สื่อชนิด `leaf` หรือ `pipeline` ชัดเจน
 
-Phase 5 is partially complete. See `PHASE5_TOPOLOGY.md` for migration/rollback.
-101 offline tests passed. Discovery/readiness now expose descriptive service IDs
-and leaf/pipeline kinds while existing runtime names remain compatible.
-Versioned DET and REC routes are direct; unversioned DET retains its legacy layout
-response path. OCR Custom recognition routes are deprecated but not removed.
-Physical DET consolidation requires Linux/GPU resource evidence; endpoint removal
-requires a consumer/log audit. Neither gate has been established locally.
+Phase 5 source work is complete. See `PHASE5_TOPOLOGY.md` for migration/rollback.
+124 offline tests passed across Phases 5/6. Runtime service metadata uses explicit
+leaf/pipeline names; public endpoint paths stay unchanged. Unversioned DET retains
+its response shape via the leaf formatter. REC-only OCR Custom routes and rollback compatibility were removed in Phase 6. VPS rollout was not run.
 
 ### Phase 6 — Remove deprecated code
 
-- [ ] ลบ generated/runtime files ออกจาก source tree
-- [ ] ลบ `models/version_old/` หลังตรวจว่าไม่มี external import
-- [ ] ลบ unused local OCR fallback
-- [ ] ปิด legacy aliases ด้วย feature flag จริง
+- [x] ตรวจ tracked source แล้วไม่พบ generated/runtime artifacts; คง ignore rules และไม่ลบ local runtime data
+- [x] ลบไฟล์เก่าใน `models/version_old/` หลังไม่พบ reference ใน repository (ไม่อ้างว่า audit external server ได้ทั้งหมด)
+- [x] ลบ unused local OCR fallback
+- [x] ปิด legacy inference aliases ด้วย feature flag จริง โดยคง operational `/health`
 - [ ] ลบ pipeline ซ้ำเมื่อมีผลเปรียบเทียบและ migration เสร็จแล้ว
+
+Approved cleanup items 1–4 are complete: wrappers, REC compatibility, Layout DET-only
+routes and legacy launcher targets are removed. Active alternative pipelines are retained
+until the final conditional migration gate passes. See `PHASE6_CLEANUP.md`.
 
 ## 11. Requirements Organization
 

@@ -19,8 +19,7 @@ $EnvFile = if ($env:MODEL_ENV_FILE) { $env:MODEL_ENV_FILE } else { Join-Path $Ro
 
 $Ports = @{
     "layout" = 8001
-    "det-v5" = 8002
-    "det-v6" = 8003
+    "detection" = 8002
     "rec-th" = 8004
     "ocr-custom" = 8005
     "ocr-paddle" = 8006
@@ -36,8 +35,7 @@ $Ports = @{
 }
 $PortEnvironment = @{
     "layout" = "LAYOUT_PORT"
-    "det-v5" = "DET_V5_PORT"
-    "det-v6" = "DET_V6_PORT"
+    "detection" = "DETECTION_PORT"
     "rec-th" = "REC_TH_PORT"
     "ocr-custom" = "OCR_CUSTOM_PORT"
     "ocr-paddle" = "OCR_PADDLE_PORT"
@@ -53,28 +51,28 @@ $PortEnvironment = @{
 }
 
 $CoreServices = @(
-    "layout", "det-v5", "rec-th", "table-wired", "table-wireless", "siglip",
+    "layout", "detection", "rec-th", "table-wired", "table-wireless", "siglip",
     "ocr-custom", "layout-pipeline", "table-pipeline", "image-verification", "gateway"
 )
 $AllServices = @(
-    "layout", "det-v5", "det-v6", "rec-th", "table-wired", "table-wireless", "table-v2", "siglip",
+    "layout", "detection", "rec-th", "table-wired", "table-wireless", "table-v2", "siglip",
     "ocr-custom", "ocr-paddle", "layout-pipeline", "table-pipeline", "image-verification", "gateway"
 )
 $Profiles = @{
     "core-stack" = $CoreServices
-    "ocr-custom-stack" = @("det-v5", "rec-th", "ocr-custom", "gateway")
+    "ocr-custom-stack" = @("detection", "rec-th", "ocr-custom", "gateway")
     "ocr-paddle-stack" = @("ocr-paddle", "gateway")
-    "layout-stack" = @("layout", "det-v5", "layout-pipeline", "gateway")
-    "table-stack" = @("det-v5", "rec-th", "ocr-custom", "table-wired", "table-wireless", "table-pipeline", "gateway")
+    "layout-stack" = @("layout", "detection", "layout-pipeline", "gateway")
+    "table-stack" = @("detection", "rec-th", "ocr-custom", "table-wired", "table-wireless", "table-pipeline", "gateway")
     "table-v2-stack" = @("table-v2", "gateway")
     "verification-stack" = @("siglip", "image-verification", "gateway")
 }
 $ProfilePipelines = @{
-    "core-stack" = "layout,ocr-custom,table,image-verification,text-det-v5,text-recognition,siglip"
-    "ocr-custom-stack" = "ocr-custom,text-det-v5,text-recognition"
+    "core-stack" = "layout,ocr-custom,table,image-verification,text-detection,text-recognition,siglip"
+    "ocr-custom-stack" = "ocr-custom,text-detection,text-recognition"
     "ocr-paddle-stack" = "ocr-paddle"
-    "layout-stack" = "layout,text-det-v5"
-    "table-stack" = "table,text-det-v5,text-recognition"
+    "layout-stack" = "layout,text-detection"
+    "table-stack" = "table,text-detection,text-recognition"
     "table-v2-stack" = "table-model"
     "verification-stack" = "image-verification,siglip"
     "all" = "all"
@@ -93,16 +91,16 @@ Usage:
 
 Profiles:
   core-stack          default production stack using split polygon det + rec OCR
-  ocr-custom-stack    det-v5 + rec-th + custom OCR + gateway
+  ocr-custom-stack    detection + rec-th + custom OCR + gateway
   ocr-paddle-stack    integrated Paddle OCR + gateway
-  layout-stack        layout + det-v5 + layout pipeline + gateway
+  layout-stack        layout + detection + layout pipeline + gateway
   table-stack         split wired/wireless table pipeline + gateway
   table-v2-stack      TableRecognitionPipelineV2 + gateway; no split table models
   verification-stack SigLIP + verification pipeline + gateway
   all                 every model/pipeline; may load duplicate weights
 
 Services:
-  layout det-v5 det-v6 rec-th ocr-custom ocr-paddle table-wired
+  layout detection rec-th ocr-custom ocr-paddle table-wired
   table-wireless table-v2 siglip layout-pipeline table-pipeline
   image-verification gateway demo
 "@ | Write-Host

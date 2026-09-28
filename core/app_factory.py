@@ -90,7 +90,10 @@ def create_app(
         request.state.started_at = time.perf_counter()
         documentation_path = docs_enabled and request.url.path in {"/docs", "/redoc", "/openapi.json"}
 
-        if _is_production() and request.url.path == "/predict" and not _env_flag("LEGACY_ENDPOINTS_ENABLED"):
+        legacy_aliases = {"/predict", "/v1/textdetection", "/v1/textrecognition"}
+        if request.url.path in legacy_aliases and not _env_flag(
+            "LEGACY_ENDPOINTS_ENABLED", "false" if _is_production() else "true"
+        ):
             return JSONResponse(
                 status_code=404,
                 content=_error_body(request, code="RESOURCE_NOT_FOUND", message="The requested resource was not found."),

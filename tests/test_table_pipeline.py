@@ -3,7 +3,8 @@ import pytest
 pytest.importorskip("cv2")
 pytest.importorskip("numpy")
 
-from pipeline.table_pipeline import assemble_table_result, table_result_needs_fallback
+from pipelines.table.result_assembly import assemble_table_result
+from pipelines.table.quality import table_result_needs_fallback
 
 
 def _structure(rows):

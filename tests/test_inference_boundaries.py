@@ -56,14 +56,6 @@ def test_migrated_http_services_do_not_import_model_frameworks_directly():
         assert "inference" in imported_roots, relative_path
 
 
-def test_legacy_model_modules_are_thin_compatibility_wrappers():
+def test_legacy_model_wrappers_removed():
     for filename in ("det_model.py", "rec_model.py", "table_v2_model.py"):
-        tree = _tree(f"models/{filename}")
-        functions = _top_level_functions(tree)
-        imports = {
-            node.module
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module
-        }
-        assert functions == set()
-        assert all(module.startswith("inference.") for module in imports)
+        assert not (ROOT / "models" / filename).exists()

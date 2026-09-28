@@ -14,7 +14,7 @@ def clean_topology(monkeypatch):
     for key in ("GATEWAY_ENABLED_SERVICES", "GATEWAY_REQUIRED_SERVICES",
                 "GATEWAY_ENABLED_PIPELINES", "GATEWAY_REQUIRED_PIPELINES"):
         monkeypatch.delenv(key, raising=False)
-    monkeypatch.setattr(gateway, "TEXT_DETECTION_URL", "")
+    monkeypatch.setattr(gateway, "TEXT_DETECTION_URL", "http://localhost:8002")
 
 
 def png():
@@ -47,14 +47,14 @@ def test_unified_detection_routes_single_and_batch_with_selection(monkeypatch, v
 
 def test_unified_detection_retains_legacy_unversioned_contract_and_validation(monkeypatch):
     monkeypatch.setattr(gateway, "TEXT_DETECTION_URL", "http://unified-det")
-    assert gateway._text_detector_upstream(None) == gateway.LAYOUT_PIPELINE_URL
+    assert gateway._text_detector_upstream(None) == "http://unified-det"
     response = TestClient(gateway.app).post("/api/v1/text-detections?version=7")
     assert response.status_code == 422
 
 
-def test_split_detection_routing_remains_default():
-    assert gateway._text_detector_upstream("5") == gateway.DET_V5_URL
-    assert gateway._text_detector_upstream("6") == gateway.DET_V6_URL
+def test_both_versions_share_default_detector():
+    assert gateway._text_detector_upstream("5") == gateway.TEXT_DETECTION_URL
+    assert gateway._text_detector_upstream("6") == gateway.TEXT_DETECTION_URL
 
 
 def test_unified_readiness_aliases_probe_one_service(monkeypatch):
@@ -103,7 +103,7 @@ def test_invalid_configuration_matches_in_discovery_and_readiness(monkeypatch, e
         assert response.json()["error"]["code"] == "GATEWAY_CONFIGURATION_ERROR"
 
 
-def test_legacy_recognition_routes_are_deprecated_but_not_removed():
+def test_legacy_recognition_routes_are_disabled_by_default():
     schema = custom.app.openapi()
     for path in ("/api/v1/text-recognitions", "/api/v1/text-recognition-batches"):
-        assert schema["paths"][path]["post"]["deprecated"] is True
+        assert path not in schema["paths"]

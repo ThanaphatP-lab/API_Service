@@ -12,7 +12,7 @@ from core.app_factory import create_app
 from shared.contracts import request_id, success_response
 
 MODEL_NAME = "SLANeXt wired/wireless + OCR"
-SERVICE_NAME = "table-recognition-pipeline"
+SERVICE_NAME = "pipeline-table-custom"
 service_urls = ServiceURLs()
 WIRED_SERVICE_URL = service_urls.table_wired_service_url
 WIRELESS_SERVICE_URL = service_urls.table_wireless_service_url

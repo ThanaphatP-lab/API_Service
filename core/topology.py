@@ -16,7 +16,7 @@ class ServiceDescriptor:
 
 
 SERVICE_DESCRIPTORS = {
-    "layout": ServiceDescriptor("pipeline-document-layout", "pipeline", ("/api/v1/document-layouts", "/api/v1/text-detections", "/api/v1/text-detection-batches")),
+    "layout": ServiceDescriptor("pipeline-document-layout", "pipeline", ("/api/v1/document-layouts",)),
     "ocr-custom": ServiceDescriptor("pipeline-ocr-custom", "pipeline", ("/api/v1/ocr-results?engine=custom",)),
     "ocr-paddle": ServiceDescriptor("pipeline-ocr-paddle", "pipeline", ("/api/v1/ocr-results?engine=paddle", "/api/v1/ocr-result-batches")),
     "table": ServiceDescriptor("pipeline-table-custom", "pipeline", ("/api/v1/table-results",)),
@@ -24,7 +24,7 @@ SERVICE_DESCRIPTORS = {
     "image-verification": ServiceDescriptor("pipeline-image-verification", "pipeline", ("/api/v1/image-verifications",)),
     "text-det-v5": ServiceDescriptor("leaf-text-detection-v5", "leaf", ("/api/v1/text-detections?version=v5", "/api/v1/text-detection-batches?version=v5")),
     "text-det-v6": ServiceDescriptor("leaf-text-detection-v6", "leaf", ("/api/v1/text-detections?version=v6", "/api/v1/text-detection-batches?version=v6")),
-    "text-detection": ServiceDescriptor("leaf-text-detection", "leaf", ("/api/v1/text-detections?version=v5", "/api/v1/text-detections?version=v6", "/api/v1/text-detection-batches?version=v5", "/api/v1/text-detection-batches?version=v6")),
+    "text-detection": ServiceDescriptor("leaf-text-detection", "leaf", ("/api/v1/text-detections", "/api/v1/text-detection-batches", "/api/v1/text-detections?version=v5", "/api/v1/text-detections?version=v6", "/api/v1/text-detection-batches?version=v5", "/api/v1/text-detection-batches?version=v6")),
     "text-recognition": ServiceDescriptor("leaf-text-recognition", "leaf", ("/api/v1/text-recognitions", "/api/v1/text-recognition-batches")),
     "siglip": ServiceDescriptor("leaf-image-classification", "leaf", ("/api/v1/image-classifications",)),
 }

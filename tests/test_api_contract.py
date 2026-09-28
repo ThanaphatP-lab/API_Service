@@ -7,7 +7,8 @@ from fastapi import Request
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from shared.api import create_app, parse_image_request
+from core.app_factory import create_app
+from core.request_parsing import parse_image_request
 from shared.contracts import ModelAPIError, success_response
 
 

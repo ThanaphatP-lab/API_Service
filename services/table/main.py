@@ -13,7 +13,7 @@ from core.errors import run_image_inference
 from shared.contracts import success_response
 
 MODEL_NAME = os.getenv("TABLE_MODEL_NAME", "SLANeXt_wired")
-SERVICE_NAME = "table-structure-model"
+SERVICE_NAME = "leaf-table-structure"
 app = create_app("Table Structure Recognition API", MODEL_NAME, service_name=SERVICE_NAME)
 
 

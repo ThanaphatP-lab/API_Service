@@ -21,15 +21,15 @@ Pure geometry/scoring modules do not make HTTP calls.
 
 ## Compatibility and intended behavior
 
-- `pipeline/*.py` remains as compatibility re-exports; do not delete yet.
+- Old `pipeline/*.py` compatibility exports were removed in Phase 6; use `pipelines/`.
 - API paths, response fields, selection fields and quality thresholds are unchanged.
 - OCR preserves polygon cropping, recognition chunking and output order.
 - Table auto mode preserves initial grid-based selection, shared OCR, semi-region
   batch recovery and alternate-model fallback.
 - This custom table workflow is distinct from official TableV2. Official
   TableV2/PaddleOCR initialization and variant capabilities are not extended here.
-- Shared API infrastructure now lives in `core/` (Phase 4); `shared/api.py`
-  remains a compatibility facade. Upstream transport still uses `shared/upstream.py`.
+- Shared API infrastructure lives in `core/`; `shared/api.py` was removed in Phase 6.
+  Upstream transport still uses `shared/upstream.py`.
 
 For workflow tests, inject a ModelClient instead of patching transport globals
 in the old compatibility modules. No model/GPU is needed for these tests.

@@ -18,7 +18,7 @@ from shared.contracts import success_response
 
 
 MODEL_NAME = "TableRecognitionPipelineV2"
-SERVICE_NAME = "table-recognition-v2-pipeline"
+SERVICE_NAME = "pipeline-table-v2"
 app = create_app("TableRecognitionPipelineV2 API", MODEL_NAME, service_name=SERVICE_NAME)
 logger = logging.getLogger("uvicorn.error")
 
