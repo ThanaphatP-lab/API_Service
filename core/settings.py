@@ -106,6 +106,16 @@ class RateLimitSettings:
 
 
 @dataclass(frozen=True)
+class RecognitionQueueSettings:
+    quantum: int = field(default_factory=lambda: _positive_int_env("REC_FAIR_CHUNK_SIZE", 20))
+    max_jobs: int = field(default_factory=lambda: _positive_int_env("REC_QUEUE_MAX_JOBS", 16))
+    max_items: int = field(default_factory=lambda: _positive_int_env("REC_QUEUE_MAX_IMAGES", 256))
+    max_bytes: int = field(default_factory=lambda: _positive_int_env("REC_QUEUE_MAX_MB", 256) * 1024 * 1024)
+    timeout: int = field(default_factory=lambda: _positive_int_env("REC_JOB_TIMEOUT_SECONDS", 180))
+    http_requests: int = field(default_factory=lambda: _positive_int_env("REC_MAX_CONCURRENT_REQUESTS", 16))
+
+
+@dataclass(frozen=True)
 class LayoutSettings:
     @property
     def padding(self) -> tuple[int, int, int, int]:

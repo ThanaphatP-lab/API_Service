@@ -29,6 +29,8 @@ def create_app(
     auth_token_env: str = "INTERNAL_API_TOKEN",
     required_auth_token_envs: tuple[str, ...] = (),
     public_api: bool = False,
+    max_concurrent_requests: int | None = None,
+    lifespan: Any = None,
 ) -> FastAPI:
     service = service_name or title.lower().replace(" ", "-")
     docs_enabled = not _is_production() and _env_flag("API_DOCS_ENABLED", "true")
@@ -38,6 +40,7 @@ def create_app(
         docs_url="/docs" if docs_enabled else None,
         redoc_url="/redoc" if docs_enabled else None,
         openapi_url="/openapi.json" if docs_enabled else None,
+        lifespan=lifespan,
     )
     app.state.service_name = service
     app.state.model_name = model_name
@@ -74,7 +77,9 @@ def create_app(
             expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"],
         )
     limiter = InMemoryRateLimiter()
-    max_concurrent = runtime_settings.max_concurrent_requests(public_api=public_api)
+    max_concurrent = max_concurrent_requests if max_concurrent_requests is not None else runtime_settings.max_concurrent_requests(public_api=public_api)
+    if max_concurrent < 1:
+        raise ValueError("max_concurrent_requests must be positive")
     queue_timeout = runtime_settings.queue_timeout
     inference_slots = asyncio.Semaphore(max_concurrent)
 

@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Secrets and local environment configuration
 # -----------------------------------------------------------------------------
-# Git hygiene, not a production deployment manifest. Keep source, tests, docs,
+# Git hygiene, not a production deployment manifest. Keep source, tests, READMEs,
 # requirements, model_variants.json and sanitized *.example files versioned.
 .env
 .env.*
@@ -143,3 +143,9 @@ docker-compose.override.yml
 docker-compose.override.yaml
 compose.override.yml
 compose.override.yaml
+
+# -----------------------------------------------------------------------------
+# Markdown documentation (keep README.md in otherwise tracked directories)
+# -----------------------------------------------------------------------------
+*.[mM][dD]
+![rR][eE][aA][dD][mM][eE].[mM][dD]

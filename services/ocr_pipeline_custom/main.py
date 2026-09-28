@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from core.settings import runtime_settings
+from core.settings import runtime_settings, _positive_int_env
 from core.service_settings import ServiceURLs
 from typing import Any
 
@@ -22,7 +22,8 @@ service_urls = ServiceURLs()
 DET_SERVICE_URL = service_urls.text_detection_url or service_urls.det_service_url
 REC_SERVICE_URL = service_urls.rec_service_url
 model_client = HTTPModelClient()
-app = create_app("Custom Thai OCR Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
+app = create_app("Custom Thai OCR Pipeline API", MODEL_NAME, service_name=SERVICE_NAME,
+                 max_concurrent_requests=_positive_int_env("OCR_MAX_CONCURRENT_REQUESTS", 4))
 
 
 def _recognition_batch_size() -> int:

@@ -605,6 +605,10 @@ systemd/Supervisor for automatic start after reboot and crash recovery.
 
 ## Tests
 
+REC now supports bounded per-request round-robin inference scheduling, with
+independent HTTP responses and one dedicated inference thread. See
+[REC fair scheduling, settings and limitations](REC_FAIR_SCHEDULING.md).
+
 Phase 5 defaults to one DET service for both versions on Linux and Windows.
 See [migration notes](PHASE5_TOPOLOGY.md) and [Phase 6 cleanup](PHASE6_CLEANUP.md).
 Deploy updated Gateway and DET together. Service metadata now uses `leaf-*` /
