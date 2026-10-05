@@ -8,6 +8,7 @@ from typing import Any
 import requests
 
 from shared.contracts import ModelAPIError
+from core.telemetry import timed_stage
 
 
 def chunked_paths(image_paths: list[Path], batch_size: int) -> list[list[Path]]:
@@ -30,6 +31,7 @@ def _internal_headers(request_id: str) -> dict[str, str]:
     return headers
 
 
+@timed_stage("upstream_http_roundtrip")
 def post_images(
     base_url: str,
     endpoint: str,

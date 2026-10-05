@@ -311,7 +311,7 @@ def test_table_v2_forwards_independent_recognition_variant(monkeypatch):
 def test_ocr_result_batches_route_to_integrated_paddle(monkeypatch):
     forwarded = {}
 
-    async def forward_multiple(request, *, upstream, endpoint):
+    async def forward_multiple(request, *, upstream, endpoint, field_resolver=None):
         forwarded.update(upstream=upstream, endpoint=endpoint)
         return {"selected": "paddle"}
 

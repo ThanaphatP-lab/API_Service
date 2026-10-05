@@ -222,10 +222,14 @@ def resolve_ocr_model_pair(
     default_version: str = "v5",
     detection_variant: Any = None,
     recognition_variant: Any = None,
+    detection_version: Any = None,
+    recognition_version: Any = None,
 ) -> OCRModelPairSpec:
     """Resolve matching DET and REC variants for an integrated OCR pipeline."""
 
     canonical_version = normalize_model_version(version, default=default_version)
+    det_version = normalize_model_version(detection_version, default=canonical_version)
+    rec_version = normalize_model_version(recognition_version, default=canonical_version)
     default_variant = normalize_model_variant(variant)
     selected_detection_variant = normalize_model_variant(
         detection_variant if detection_variant is not None else default_variant
@@ -239,16 +243,16 @@ def resolve_ocr_model_pair(
         else f"det-{selected_detection_variant}__rec-{selected_recognition_variant}"
     )
     return OCRModelPairSpec(
-        version=canonical_version,
+        version=det_version if det_version == rec_version else f"det-{det_version}__rec-{rec_version}",
         variant=profile,
         detection=resolve_model_variant(
             "detection",
-            canonical_version,
+            det_version,
             selected_detection_variant,
         ),
         recognition=resolve_model_variant(
             "recognition",
-            canonical_version,
+            rec_version,
             selected_recognition_variant,
         ),
     )

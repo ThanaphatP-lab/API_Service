@@ -147,6 +147,28 @@ def _request_ocr_selection(request: Request, fields: dict[str, Any]) -> dict[str
     )
 
 
+def _request_paddle_selection(request: Request, fields: dict[str, Any]) -> dict[str, str]:
+    common = _field_value(request, fields, "ocr_version", _field_value(request, fields, "version"))
+    model = normalize_model_variant(_field_value(request, fields, "profile", _field_value(request, fields, "model", "baseline")))
+    selected = {"model": model}
+    if common is not None:
+        selected["version"] = normalize_model_version(common)
+    for prefix in ("det", "rec"):
+        version = _field_value(request, fields, f"{prefix}_version")
+        variant = normalize_model_variant(_field_value(request, fields, f"{prefix}_model", model))
+        if version is not None:
+            selected[f"{prefix}_version"] = normalize_model_version(version)
+        selected[f"{prefix}_model"] = variant
+        if variant != "baseline" and version is None and common is None:
+            raise ModelAPIError(422, "MODEL_VERSION_REQUIRED",
+                                f"version or {prefix}_version is required for a non-baseline {prefix} model.")
+    # Do not inject baseline per-module selectors into a legacy default request.
+    for prefix in ("det", "rec"):
+        if _field_value(request, fields, f"{prefix}_model") is None:
+            selected.pop(f"{prefix}_model")
+    return selected
+
+
 def _request_table_v2_selection(request: Request, fields: dict[str, Any]) -> dict[str, str]:
     selected_version = _field_value(
         request,
@@ -318,14 +340,16 @@ async def ocr_results(
     selection_keys = {"version", "model", "det_model", "rec_model"}
     selection: dict[str, str] | None = None
     resolver = None
-    if engine == "custom" and selection_keys.intersection(request.query_params):
+    if engine == "paddle":
+        resolver = lambda fields: _request_paddle_selection(request, fields)
+    elif selection_keys.intersection(request.query_params):
         selection = _table_v2_selection_fields(
             version,
             model,
             det_model,
             rec_model,
         )
-    elif engine == "custom":
+    else:
         resolver = lambda fields: _request_ocr_selection(request, fields)
     return await _forward(
         request,
@@ -351,6 +375,7 @@ async def ocr_result_batches(request: Request) -> dict[str, Any]:
         request,
         upstream=OCR_PADDLE_URL,
         endpoint="/api/v1/ocr-result-batches",
+        field_resolver=lambda fields: _request_paddle_selection(request, fields),
     )
 
 

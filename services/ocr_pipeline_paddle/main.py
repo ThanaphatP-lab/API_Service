@@ -45,13 +45,24 @@ def _prediction_parameters(fields: dict[str, Any]) -> dict[str, float]:
     }
 
 
+def _selection(request: Request, fields: dict[str, Any]):
+    def value(name):
+        return request.query_params.get(name, fields.get(name))
+    return selection_from_settings(
+        value("ocr_version") or value("version"),
+        value("profile") or value("model") or "baseline",
+        detection_model=value("det_model"), recognition_model=value("rec_model"),
+        detection_version=value("det_version"), recognition_version=value("rec_version"),
+    )
+
+
 @app.post("/api/v1/ocr-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(request: Request) -> dict[str, Any]:
     image = await parse_image_request(request)
     try:
         parameters = _prediction_parameters(image.fields)
-        selection = selection_from_settings()
+        selection = _selection(request, image.fields)
         payload = run_image_inference(
             lambda path: infer(path, selection, parameters=parameters),
             image.path,
@@ -60,7 +71,7 @@ async def predict(request: Request) -> dict[str, Any]:
             request,
             payload,
             service=SERVICE_NAME,
-            model=MODEL_NAME,
+            model=selection.model_name,
         )
     finally:
         image.cleanup()
@@ -72,7 +83,7 @@ async def predict_batch(request: Request) -> dict[str, Any]:
     images = await parse_image_request(request, multiple=True)
     try:
         parameters = _prediction_parameters(images.fields)
-        selection = selection_from_settings()
+        selection = _selection(request, images.fields)
         payload = run_image_inference(
             lambda _: infer_batch(
                 [str(path) for path in images.paths],
@@ -85,7 +96,7 @@ async def predict_batch(request: Request) -> dict[str, Any]:
             request,
             payload,
             service=SERVICE_NAME,
-            model=MODEL_NAME,
+            model=selection.model_name,
         )
     finally:
         images.cleanup()

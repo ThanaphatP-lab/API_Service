@@ -14,6 +14,7 @@ from shared.contracts import ModelAPIError
 from core.errors import _safe_received
 from core.limits import _max_upload_bytes, check_batch_limits
 from core.settings import limits_settings
+from core.telemetry import timed_stage
 
 
 IMAGE_REQUEST_OPENAPI = {
@@ -165,6 +166,7 @@ async def _read_upload_limited(upload: Any) -> bytes:
     return b"".join(chunks)
 
 
+@timed_stage("receive_decode_verify_images")
 async def parse_image_request(request: Request, *, multiple: bool = False) -> ImageRequest:
     """Accept image input as multipart upload or JSON Base64/Data URL."""
     content_type = request.headers.get("content-type", "").lower()

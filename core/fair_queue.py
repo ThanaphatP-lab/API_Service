@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from core.telemetry import current_request
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -28,6 +30,7 @@ class _Job:
     cursor: int = 0
     cancelled: bool = False
     results: list[Any] = field(default_factory=list)
+    queued_at: float = field(default_factory=time.perf_counter)
 
 
 class FairInferenceQueue:
@@ -101,8 +104,19 @@ class FairInferenceQueue:
                     self._finish(job, ModelAPIError(503, "SERVICE_BUSY", "Inference service is stopping."))
                     continue
                 chunk = job.items[job.cursor:job.cursor + self.quantum]
+                turn_start = time.perf_counter()
+                logging.getLogger("uvicorn.error").info(
+                    "fair_queue_turn request_id=%s queue_wait_ms=%.2f items=%s active_jobs=%s",
+                    job.label, (turn_start-job.queued_at)*1000, len(chunk), len(self._jobs),
+                )
+                def run_chunk(job=job, chunk=chunk):
+                    token = current_request.set(job.label)
+                    try:
+                        return job.run(chunk)
+                    finally:
+                        current_request.reset(token)
                 try:
-                    result = await asyncio.get_running_loop().run_in_executor(self._executor, job.run, chunk)
+                    result = await asyncio.get_running_loop().run_in_executor(self._executor, run_chunk)
                 except Exception as exc:
                     self._finish(job, exc)
                     continue
@@ -116,6 +130,7 @@ class FairInferenceQueue:
                     if job.cursor == len(job.items):
                         self._finish(job)
                     else:
+                        job.queued_at = time.perf_counter()
                         self._ready.append(job)
                 # Admit arrivals and deliver finished responses before the next turn.
                 await asyncio.sleep(0)

@@ -17,6 +17,7 @@ from core.auth import _AUTH_EXEMPT_PATHS, _configured_tokens, _request_token, _s
 from core.errors import _error_body, _safe_received, _public_error_details
 from core.settings import _is_production, _env_flag, runtime_settings
 from core.limits import check_request_size
+from core.telemetry import RequestTelemetry
 
 logger = logging.getLogger('model_api')
 
@@ -91,7 +92,7 @@ def create_app(
             and len(supplied) <= 128
             and supplied.replace("-", "").replace("_", "").isalnum()
         )
-        request.state.request_id = supplied if valid_supplied else f"req_{uuid.uuid4().hex}"
+        request.state.request_id = getattr(request.state, "request_id", None) or (supplied if valid_supplied else f"req_{uuid.uuid4().hex}")
         request.state.started_at = time.perf_counter()
         documentation_path = docs_enabled and request.url.path in {"/docs", "/redoc", "/openapi.json"}
 
@@ -161,10 +162,15 @@ def create_app(
             )
 
         acquired = False
+        queue_started = time.perf_counter()
         if request.method == "POST":
             try:
                 await asyncio.wait_for(inference_slots.acquire(), timeout=max(0.1, queue_timeout))
                 acquired = True
+                logging.getLogger("uvicorn.error").info(
+                    "admission_complete request_id=%s service=%s queue_wait_ms=%.2f",
+                    request.state.request_id, service, (time.perf_counter()-queue_started)*1000,
+                )
             except asyncio.TimeoutError:
                 return JSONResponse(
                     status_code=503,
@@ -301,4 +307,5 @@ def create_app(
     def legacy_health(request: Request) -> dict[str, Any]:
         return health(request)
 
+    app.add_middleware(RequestTelemetry, service=service)
     return app

@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import Request
 from shared.contracts import ModelAPIError, request_id
 from core.settings import runtime_settings
+from core.telemetry import timed_stage
 
 
 _SENSITIVE_DETAIL_KEYS = {"path", "reason", "stack", "traceback", "upstream", "upstream_message"}
@@ -65,6 +66,7 @@ def _error_body(
     }
 
 
+@timed_stage("inference_including_load_and_adaptation")
 def run_image_inference(handler: Callable[[str], Any], path: Path) -> Any:
     try:
         return handler(str(path))
