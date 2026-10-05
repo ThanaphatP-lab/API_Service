@@ -48,7 +48,7 @@ def infer_batch(
         payload["model_selection"] = selection.public_dict()
         return payload
     try:
-        configured_batch_size = int(os.getenv("DET_BATCH_SIZE", "8"))
+        configured_batch_size = int(os.getenv("DET_BATCH_SIZE", "1"))
     except ValueError:
         configured_batch_size = 8
     batch_size = max(1, min(len(image_paths), configured_batch_size))

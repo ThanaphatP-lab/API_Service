@@ -5,8 +5,8 @@ from typing import Any
 
 from fastapi import Request
 
-from inference.siglip import get_model, infer, selection_from_settings
-from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_image_request
+from inference.siglip import get_model, infer, infer_batch, selection_from_settings
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
 from core.readiness import add_readiness_route
 from core.app_factory import create_app
 from core.errors import run_image_inference
@@ -21,7 +21,16 @@ app = create_app("SigLIP Zero-shot Classification API", MODEL_NAME, service_name
 @app.post("/api/v1/image-classifications", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(request: Request) -> dict[str, Any]:
-    image = await parse_image_request(request)
+    return await _predict(request, multiple=False)
+
+
+@app.post("/api/v1/image-classification-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def predict_batch(request: Request) -> dict[str, Any]:
+    return await _predict(request, multiple=True)
+
+
+async def _predict(request: Request, *, multiple: bool) -> dict[str, Any]:
+    image = await parse_image_request(request, multiple=multiple)
     try:
         # Notebook (4) accepts category objects and evaluates only enabled
         # prompts. ``labels`` remains a compatibility alias for the existing
@@ -47,7 +56,8 @@ async def predict(request: Request) -> dict[str, Any]:
 
         selection = selection_from_settings()
         payload = run_image_inference(
-            lambda path: infer(path, candidates, selection),
+            lambda path: infer_batch([str(p) for p in image.paths], candidates, selection)
+            if multiple else infer(path, candidates, selection),
             image.path,
         )
         return success_response(

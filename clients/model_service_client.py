@@ -8,6 +8,8 @@ from shared import upstream
 
 ModelEndpoint = Literal[
     "/api/v1/layout-predictions",
+    "/api/v1/layout-prediction-batches",
+    "/api/v1/image-classification-batches",
     "/api/v1/text-detections",
     "/api/v1/text-detection-batches",
     "/api/v1/text-recognitions",

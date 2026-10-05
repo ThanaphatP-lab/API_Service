@@ -8,7 +8,7 @@ from fastapi import Request
 
 from pipelines.layout.orchestrator import analyze_document_layout
 from clients.model_service_client import HTTPModelClient
-from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_bool, parse_image_request
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_bool, parse_image_request
 from core.app_factory import create_app
 from shared.contracts import request_id, success_response
 
@@ -24,7 +24,16 @@ app = create_app("Document Layout Pipeline API", MODEL_NAME, service_name=SERVIC
 
 @app.post("/api/v1/document-layouts", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def document_layouts(request: Request) -> dict:
-    image = await parse_image_request(request)
+    return await _document_layouts(request, multiple=False)
+
+
+@app.post("/api/v1/document-layout-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def document_layout_batches(request: Request) -> dict:
+    return await _document_layouts(request, multiple=True)
+
+
+async def _document_layouts(request: Request, *, multiple: bool) -> dict:
+    image = await parse_image_request(request, multiple=multiple)
     try:
         expand = parse_bool(
             image.fields.get("expand_text_rois"),
@@ -35,19 +44,22 @@ async def document_layouts(request: Request) -> dict:
         padding = layout_settings.padding
         table_padding = layout_settings.table_padding
         max_neighbor_overlap = layout_settings.max_neighbor_overlap
-        result = await asyncio.to_thread(
-            analyze_document_layout,
-            image.path,
-            layout_url=LAYOUT_SERVICE_URL,
-            detector_url=DET_SERVICE_URL,
-            client=model_client,
-            request_id=request_id(request),
-            expand_text_rois=expand,
-            auto_roi_mode=mode,
-            padding=padding,
-            table_padding=table_padding,
-            max_neighbor_overlap=max_neighbor_overlap,
-        )
+        results = []
+        for path in image.paths:
+            results.append(await asyncio.to_thread(
+                analyze_document_layout,
+                path,
+                layout_url=LAYOUT_SERVICE_URL,
+                detector_url=DET_SERVICE_URL,
+                client=model_client,
+                request_id=request_id(request),
+                expand_text_rois=expand,
+                auto_roi_mode=mode,
+                padding=padding,
+                table_padding=table_padding,
+                max_neighbor_overlap=max_neighbor_overlap,
+            ))
+        result = {"results": results, "count": len(results)} if multiple else results[0]
         return success_response(
             request,
             result,

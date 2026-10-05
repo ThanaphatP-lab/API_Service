@@ -5,8 +5,8 @@ from typing import Any
 
 from fastapi import Request
 
-from inference.layout_detection import get_model, infer, selection_from_settings
-from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_image_request
+from inference.layout_detection import get_model, infer, infer_batch, selection_from_settings
+from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
 from core.readiness import add_readiness_route
 from core.app_factory import create_app
 from core.errors import run_image_inference
@@ -32,6 +32,18 @@ async def predict(request: Request) -> dict[str, Any]:
         )
     finally:
         image.cleanup()
+
+
+@app.post("/api/v1/layout-prediction-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def predict_batch(request: Request) -> dict[str, Any]:
+    images = await parse_image_request(request, multiple=True)
+    try:
+        selection = selection_from_settings()
+        payload = run_image_inference(
+            lambda _: infer_batch([str(p) for p in images.paths], selection), images.path)
+        return success_response(request, payload, service=SERVICE_NAME, model=MODEL_NAME)
+    finally:
+        images.cleanup()
 
 
 add_readiness_route(app, lambda: get_model(selection_from_settings()))

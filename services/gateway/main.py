@@ -30,6 +30,7 @@ OCR_PADDLE_URL = service_urls.ocr_paddle_url
 TABLE_PIPELINE_URL = service_urls.table_pipeline_url
 TABLE_MODEL_URL = service_urls.table_model_url
 SIGLIP_URL = service_urls.siglip_url
+LAYOUT_SERVICE_URL = service_urls.layout_service_url
 IMAGE_VERIFICATION_URL = service_urls.image_verification_url
 app = create_app(
     "Model API Gateway",
@@ -42,6 +43,7 @@ app = create_app(
 
 UPSTREAMS = {
     "layout": LAYOUT_PIPELINE_URL,
+    "layout-model": LAYOUT_SERVICE_URL,
     "ocr-custom": OCR_CUSTOM_URL,
     "ocr-paddle": OCR_PADDLE_URL,
     "table": TABLE_PIPELINE_URL,
@@ -285,6 +287,9 @@ def services(request: Request) -> dict[str, Any]:
         request,
         {
             "document_layouts": "/api/v1/document-layouts",
+            "document_layout_batches": "/api/v1/document-layout-batches",
+            "layout_prediction_batches": "/api/v1/layout-prediction-batches",
+            "image_classification_batches": "/api/v1/image-classification-batches",
             "ocr_results": "/api/v1/ocr-results",
             "ocr_result_batches": "/api/v1/ocr-result-batches",
             "text_detections": "/api/v1/text-detections",
@@ -317,6 +322,24 @@ async def document_layouts(request: Request) -> dict[str, Any]:
         upstream=LAYOUT_PIPELINE_URL,
         endpoint="/api/v1/document-layouts",
     )
+
+
+@app.post("/api/v1/document-layout-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def document_layout_batches(request: Request) -> dict[str, Any]:
+    return await _forward_multiple(request, upstream=LAYOUT_PIPELINE_URL,
+                                   endpoint="/api/v1/document-layout-batches")
+
+
+@app.post("/api/v1/layout-prediction-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def layout_prediction_batches(request: Request) -> dict[str, Any]:
+    return await _forward_multiple(request, upstream=LAYOUT_SERVICE_URL,
+                                   endpoint="/api/v1/layout-prediction-batches")
+
+
+@app.post("/api/v1/image-classification-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+async def image_classification_batches(request: Request) -> dict[str, Any]:
+    return await _forward_multiple(request, upstream=SIGLIP_URL,
+                                   endpoint="/api/v1/image-classification-batches")
 
 
 @app.post("/api/v1/ocr-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)

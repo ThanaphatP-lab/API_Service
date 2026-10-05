@@ -16,7 +16,8 @@ class ServiceDescriptor:
 
 
 SERVICE_DESCRIPTORS = {
-    "layout": ServiceDescriptor("pipeline-document-layout", "pipeline", ("/api/v1/document-layouts",)),
+    "layout": ServiceDescriptor("pipeline-document-layout", "pipeline", ("/api/v1/document-layouts", "/api/v1/document-layout-batches")),
+    "layout-model": ServiceDescriptor("leaf-layout", "leaf", ("/api/v1/layout-prediction-batches",)),
     "ocr-custom": ServiceDescriptor("pipeline-ocr-custom", "pipeline", ("/api/v1/ocr-results?engine=custom",)),
     "ocr-paddle": ServiceDescriptor("pipeline-ocr-paddle", "pipeline", ("/api/v1/ocr-results?engine=paddle", "/api/v1/ocr-result-batches")),
     "table": ServiceDescriptor("pipeline-table-custom", "pipeline", ("/api/v1/table-results",)),
@@ -26,7 +27,7 @@ SERVICE_DESCRIPTORS = {
     "text-det-v6": ServiceDescriptor("leaf-text-detection-v6", "leaf", ("/api/v1/text-detections?version=v6", "/api/v1/text-detection-batches?version=v6")),
     "text-detection": ServiceDescriptor("leaf-text-detection", "leaf", ("/api/v1/text-detections", "/api/v1/text-detection-batches", "/api/v1/text-detections?version=v5", "/api/v1/text-detections?version=v6", "/api/v1/text-detection-batches?version=v5", "/api/v1/text-detection-batches?version=v6")),
     "text-recognition": ServiceDescriptor("leaf-text-recognition", "leaf", ("/api/v1/text-recognitions", "/api/v1/text-recognition-batches")),
-    "siglip": ServiceDescriptor("leaf-image-classification", "leaf", ("/api/v1/image-classifications",)),
+    "siglip": ServiceDescriptor("leaf-image-classification", "leaf", ("/api/v1/image-classifications", "/api/v1/image-classification-batches")),
 }
 
 

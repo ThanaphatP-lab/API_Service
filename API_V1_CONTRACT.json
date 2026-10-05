@@ -9,6 +9,9 @@
     "error_required": ["code", "message", "details", "request_id", "docs"]
   },
   "public_endpoints": [
+    {"method": "POST", "path": "/api/v1/document-layout-batches", "success_data": ["results", "count"]},
+    {"method": "POST", "path": "/api/v1/layout-prediction-batches", "success_data": ["results", "count"]},
+    {"method": "POST", "path": "/api/v1/image-classification-batches", "success_data": ["results", "count"]},
     {"method": "GET", "path": "/api/v1/health", "success_data": ["status", "model", "device"]},
     {"method": "GET", "path": "/api/v1/readiness", "success_data": ["status", "summary", "services"]},
     {"method": "GET", "path": "/api/v1/services", "success_data": ["document_layouts", "ocr_results", "capabilities", "detection_topology"]},
