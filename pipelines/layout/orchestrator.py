@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import time
 import cv2
 
 from shared.contracts import ModelAPIError
+from shared.serialization import to_jsonable
 from clients.model_service_client import HTTPModelClient, ModelClient
 from pipelines.layout.geometry import (
     _payload,
@@ -37,6 +39,7 @@ def analyze_document_layout(
     table_padding: tuple[int, int, int, int] = (2, 2, 2, 2),
     max_neighbor_overlap: float = 0.15,
 ) -> dict[str, Any]:
+    pipeline_started = time.perf_counter()
     if auto_roi_mode not in {"text-line", "layout", "hybrid"}:
         raise ModelAPIError(
             422,
@@ -49,18 +52,21 @@ def analyze_document_layout(
         raise ModelAPIError(422, "INVALID_IMAGE", "OpenCV could not decode the image.")
     height, width = image.shape[:2]
 
+    calls_started = time.perf_counter()
     layout_data = (client if client is not None else HTTPModelClient()).infer(
         layout_url,
         "/api/v1/layout-predictions",
         [image_path],
         request_id=request_id,
     )
+    layout_finished = time.perf_counter()
     detection_data = (client if client is not None else HTTPModelClient()).infer(
         detector_url,
         "/api/v1/text-detections",
         [image_path],
         request_id=request_id,
     )
+    calls_finished = time.perf_counter()
     layouts = _layout_regions(layout_data.get("predictions") or [], width, height)
     text_lines = _text_regions(
         detection_data.get("predictions") or [],
@@ -121,6 +127,13 @@ def analyze_document_layout(
     else:
         regions = [*layouts, *prepared_texts]
     regions.sort(key=lambda item: (item["bbox"][1], item["bbox"][0]))
+    # Also protect callers connected to older upstream services. Preserve raw
+    # wrappers and metadata; remove only image pixels, without mutating inputs.
+    raw = to_jsonable({
+        "layout": layout_data.get("predictions") or [],
+        "detection": detection_data.get("predictions") or [],
+    }, exclude_keys=frozenset({"input_img"}))
+    finished = time.perf_counter()
     return {
         "image": {"width": width, "height": height},
         "mode": auto_roi_mode,
@@ -140,8 +153,13 @@ def analyze_document_layout(
             "max_neighbor_overlap": max_neighbor_overlap,
             "mode": auto_roi_mode,
         },
-        "raw": {
-            "layout": layout_data.get("predictions") or [],
-            "detection": detection_data.get("predictions") or [],
+        "raw": raw,
+        # Wall-clock HTTP calls, not isolated GPU inference. Calls stay sequential.
+        "timing": {
+            "layout_ms": round((layout_finished - calls_started) * 1000, 2),
+            "text_detection_ms": round((calls_finished - layout_finished) * 1000, 2),
+            "model_calls_ms": round((calls_finished - calls_started) * 1000, 2),
+            "postprocess_ms": round((finished - calls_finished) * 1000, 2),
+            "pipeline_ms": round((finished - pipeline_started) * 1000, 2),
         },
     }

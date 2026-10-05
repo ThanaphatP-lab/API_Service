@@ -7,6 +7,7 @@ from shared.serialization import prediction_list, to_jsonable
 
 
 CONTRACT_VERSION = "leaf-inference-v1"
+_IMAGE_FIELDS = frozenset({"input_img"})
 
 
 def first_not_none(*values: Any) -> Any:
@@ -43,7 +44,7 @@ def _base(kind: str, result: dict[str, Any], raw: list[Any]) -> dict[str, Any]:
 
 
 def adapt_layout(output: Any) -> dict[str, Any]:
-    raw = prediction_list(output)
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
     detections: list[dict[str, Any]] = []
     for obj in raw:
         item = mapping(obj)
@@ -105,7 +106,7 @@ def _text_detection_result(raw: list[Any]) -> dict[str, Any]:
 
 
 def adapt_text_detection(output: Any) -> dict[str, Any]:
-    raw = prediction_list(output)
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
     result = _text_detection_result(raw)
     # predictions remains compatible with the existing composition pipelines.
     compatibility = [result]
@@ -113,7 +114,7 @@ def adapt_text_detection(output: Any) -> dict[str, Any]:
 
 
 def adapt_text_detection_batch(output: Any, expected_count: int | None = None) -> dict[str, Any]:
-    raw = prediction_list(output)
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
     results = [_text_detection_result([value]) for value in raw]
     if expected_count is not None:
         while len(results) < expected_count:
