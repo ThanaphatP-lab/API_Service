@@ -72,9 +72,9 @@ CORE_SERVICES=(
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/model-stack.sh start <service|profile>
+  scripts/model-stack.sh start <service|profile> [--log-level info|debug]
   scripts/model-stack.sh stop <service|profile|all>
-  scripts/model-stack.sh restart <service|profile>
+  scripts/model-stack.sh restart <service|profile> [--log-level info|debug]
   scripts/model-stack.sh check
   scripts/model-stack.sh status [service|profile|all]
   scripts/model-stack.sh readiness [service|profile|all]
@@ -96,6 +96,7 @@ Services:
   gateway demo
 
 Use detection for one process serving version=5/6 and model variants.
+Default log level is info on every start/restart. Use restart to change a running service.
 EOF
 }
 
@@ -408,15 +409,18 @@ start_service() {
     return 1
   fi
 
-  echo "[START] $service on $host:$port"
+  echo "[START] $service on $host:$port (log-level=$STACK_LOG_LEVEL)"
   (
     trap '' HUP
     cd "$ROOT"
     export_service_environment "$service"
+    export APP_LOG_LEVEL="$STACK_LOG_LEVEL"
+    export API_ACCESS_LOG=false
+    [[ "$STACK_LOG_LEVEL" == "debug" ]] && export API_ACCESS_LOG=true
     if [[ "$service" == "demo" ]]; then
-      exec nohup "$python" -m streamlit run "$module" --server.address "$host" --server.port "$port"
+      exec nohup "$python" -m streamlit run "$module" --server.address "$host" --server.port "$port" --logger.level "$STACK_LOG_LEVEL"
     else
-      exec nohup "$python" -m uvicorn "$module" --host "$host" --port "$port" --workers 1
+      exec nohup "$python" -m uvicorn "$module" --host "$host" --port "$port" --workers 1 --log-level "$STACK_LOG_LEVEL"
     fi
   ) </dev/null >>"$(log_file "$service")" 2>&1 &
   local pid=$!
@@ -502,8 +506,28 @@ readiness_service() {
     "http://127.0.0.1:$port/api/v1/readiness" || true
 }
 
+parse_start_options() {
+  STACK_LOG_LEVEL=info
+  while (( $# )); do
+    case "$1" in
+      --log-level)
+        if (( $# < 2 )); then echo "[ERROR] --log-level requires info or debug." >&2; return 2; fi
+        case "$2" in
+          info|debug) STACK_LOG_LEVEL="$2" ;;
+          *) echo "[ERROR] Supported log levels: info, debug." >&2; return 2 ;;
+        esac
+        shift 2
+        ;;
+      *) echo "[ERROR] Unknown option: $1" >&2; return 2 ;;
+    esac
+  done
+}
+
 action="${1:-}"
 target="${2:-all}"
+if [[ "$action" == "start" || "$action" == "restart" ]]; then
+  parse_start_options "${@:3}"
+fi
 
 case "$action" in
   start)
@@ -519,7 +543,7 @@ case "$action" in
     ;;
   restart)
     "$ROOT/scripts/model-stack.sh" stop "$target"
-    "$ROOT/scripts/model-stack.sh" start "$target"
+    "$ROOT/scripts/model-stack.sh" start "$target" --log-level "$STACK_LOG_LEVEL"
     ;;
   check) print_check ;;
   status)

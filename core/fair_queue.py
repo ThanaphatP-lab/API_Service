@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from contextvars import copy_context, Context
 from core.telemetry import current_request
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
@@ -31,6 +32,7 @@ class _Job:
     cancelled: bool = False
     results: list[Any] = field(default_factory=list)
     queued_at: float = field(default_factory=time.perf_counter)
+    context: Context = field(default_factory=copy_context)
 
 
 class FairInferenceQueue:
@@ -105,14 +107,14 @@ class FairInferenceQueue:
                     continue
                 chunk = job.items[job.cursor:job.cursor + self.quantum]
                 turn_start = time.perf_counter()
-                logging.getLogger("uvicorn.error").info(
+                logging.getLogger("uvicorn.error").debug(
                     "fair_queue_turn request_id=%s queue_wait_ms=%.2f items=%s active_jobs=%s",
                     job.label, (turn_start-job.queued_at)*1000, len(chunk), len(self._jobs),
                 )
                 def run_chunk(job=job, chunk=chunk):
                     token = current_request.set(job.label)
                     try:
-                        return job.run(chunk)
+                        return job.context.run(job.run, chunk)
                     finally:
                         current_request.reset(token)
                 try:
@@ -121,7 +123,7 @@ class FairInferenceQueue:
                     self._finish(job, exc)
                     continue
                 job.cursor += len(chunk)
-                logger.info("inference_turn request_id=%s items=%s completed=%s total=%s",
+                logger.debug("inference_turn request_id=%s items=%s completed=%s total=%s",
                             job.label, len(chunk), job.cursor, len(job.items))
                 if job.cancelled or self._closed:
                     self._finish(job, ModelAPIError(503, "SERVICE_BUSY", "Inference service is stopping."))

@@ -20,7 +20,10 @@ def test_request_logs_rejection_and_body_without_sensitive_query(caplog):
     with caplog.at_level(logging.INFO, logger="uvicorn.error"):
         asyncio.run(run())
     assert "status=413" in caplog.text
-    assert "received_bytes=3 sent_bytes=3" in caplog.text
+    assert "in=" in caplog.text and "out=" in caplog.text
+    assert "request_received" not in caplog.text
+    assert "resources=" not in caplog.text
+    assert len(caplog.records) == 1
     assert "hidden" not in caplog.text
     assert current_request.get() == "-"
 
@@ -30,6 +33,35 @@ def test_stage_logs_failure(caplog):
     def fail():
         raise ValueError("no")
     import pytest
-    with caplog.at_level(logging.INFO, logger="uvicorn.error"), pytest.raises(ValueError):
+    with caplog.at_level(logging.DEBUG, logger="uvicorn.error"), pytest.raises(ValueError):
         fail()
     assert "outcome=error" in caplog.text
+
+
+def test_stage_accumulates_without_info_noise(caplog):
+    from core.telemetry import request_timings
+    timings = {}
+    token = request_timings.set(timings)
+    try:
+        @timed_stage("inference_including_load_and_adaptation")
+        def work(): return 1
+        with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+            assert work() == 1
+        assert timings["inference_including_load_and_adaptation"] >= 0
+        assert not caplog.records
+    finally:
+        request_timings.reset(token)
+
+
+def test_access_log_filter_is_scoped_and_opt_in(monkeypatch):
+    from core.telemetry import ManagedAccessFilter
+    f = ManagedAccessFilter()
+    monkeypatch.delenv("API_ACCESS_LOG", raising=False)
+    assert f.filter(None)
+    token = current_request.set("req_test")
+    try:
+        assert not f.filter(None)
+        monkeypatch.setenv("API_ACCESS_LOG", "true")
+        assert f.filter(None)
+    finally:
+        current_request.reset(token)

@@ -65,7 +65,7 @@ async def predict(
                 else None
             ),
         )
-        logger.info(
+        logger.debug(
             "TableV2 request selection version=%s variant=%s det_dir=%s rec_dir=%s",
             selection.version,
             selection.variant,

@@ -36,6 +36,20 @@ def test_bash_syntax():
     assert result.returncode == 0, result.stderr
 
 
+def test_log_level_defaults_and_resets():
+    assert shell('parse_start_options --log-level debug; echo "$STACK_LOG_LEVEL"; parse_start_options; echo "$STACK_LOG_LEVEL"') == ["debug", "info"]
+
+
+@pytest.mark.parametrize("options", ["--log-level", "--log-level invalid", "--unknown debug"])
+def test_invalid_log_options_rejected(options):
+    assert shell(f'if parse_start_options {options}; then echo accepted; else echo rejected; fi')[-1] == "rejected"
+
+
+def test_restart_and_uvicorn_pass_selected_level():
+    assert 'start "$target" --log-level "$STACK_LOG_LEVEL"' in SCRIPT
+    assert '--workers 1 --log-level "$STACK_LOG_LEVEL"' in SCRIPT
+
+
 @pytest.mark.parametrize("profile", ["all", "core-stack", "ocr-custom-stack", "layout-stack", "table-stack"])
 def test_profiles_start_exactly_one_detector(profile):
     names = shell(f"start_target_services {profile}")[0].split()

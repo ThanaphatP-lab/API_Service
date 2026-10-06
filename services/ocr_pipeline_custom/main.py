@@ -76,7 +76,7 @@ async def predict(
             det_model=request.query_params.get("det_model", image.fields.get("det_model", det_model)),
             rec_model=request.query_params.get("rec_model", image.fields.get("rec_model", rec_model)),
         )
-        logger.info(
+        logger.debug(
             "Custom OCR selection version=%s profile=%s det_variant=%s rec_variant=%s recognition_batch_size=%s",
             selection["version"] or "<service-default>",
             selection["model"],

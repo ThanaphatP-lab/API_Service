@@ -35,7 +35,7 @@ async def predict(
             version if version is not None else image.fields.get("version"),
             request.query_params.get("model", image.fields.get("model", model)),
         )
-        logger.info(
+        logger.debug(
             "Detection request selection endpoint=single version=%s variant=%s model_dir=%s local_weights=%s",
             selected.version,
             selected.variant,
@@ -46,7 +46,7 @@ async def predict(
         if image.fields.get("response_contract") == "legacy-layout":
             payload = format_legacy_detection(payload, image.paths)
         response_selection = payload.get("model_selection", selected.public_dict())
-        logger.info(
+        logger.debug(
             "Detection response endpoint=single version=%s variant=%s response_model=%s model_name=%s model_dir=%s local_weights=%s region_count=%s",
             selected.version,
             selected.variant,
@@ -80,7 +80,7 @@ async def predict_batch(
             version if version is not None else images.fields.get("version"),
             request.query_params.get("model", images.fields.get("model", model)),
         )
-        logger.info(
+        logger.debug(
             "Detection request selection endpoint=batch version=%s variant=%s model_dir=%s local_weights=%s image_count=%s",
             selected.version,
             selected.variant,
@@ -101,7 +101,7 @@ async def predict_batch(
             for result in results
             if isinstance(result, dict)
         )
-        logger.info(
+        logger.debug(
             "Detection response endpoint=batch version=%s variant=%s response_model=%s model_name=%s model_dir=%s local_weights=%s image_count=%s result_count=%s region_count=%s",
             selected.version,
             selected.variant,

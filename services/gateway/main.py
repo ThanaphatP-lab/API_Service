@@ -478,7 +478,7 @@ async def text_recognitions(
 ) -> dict[str, Any]:
     query_selects_model = any(name in request.query_params for name in ("version", "model"))
     selection = _model_selection_fields(version, model) if query_selects_model else None
-    logger.info(
+    logger.debug(
         "Gateway forwarding recognition endpoint=single version=%s variant=%s upstream=%s",
         (selection or {}).get("version", "<multipart-or-service-default>"),
         (selection or {}).get("model", "<multipart-or-baseline>"),
@@ -505,7 +505,7 @@ async def text_recognition_batches(
 ) -> dict[str, Any]:
     query_selects_model = any(name in request.query_params for name in ("version", "model"))
     selection = _model_selection_fields(version, model) if query_selects_model else None
-    logger.info(
+    logger.debug(
         "Gateway forwarding recognition endpoint=batch version=%s variant=%s upstream=%s",
         (selection or {}).get("version", "<multipart-or-service-default>"),
         (selection or {}).get("model", "<multipart-or-baseline>"),

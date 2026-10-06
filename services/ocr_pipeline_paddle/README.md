@@ -30,7 +30,14 @@ default to PADDLE_OCR_VERSION=v5. Set PADDLE_OCR_MODEL_CACHE_SIZE (default 2) be
 startup; each cached pipeline may allocate its own DET and REC GPU weights.
 Restart after updating model files or registry configuration.
 
-All create_app services emit INFO logs via uvicorn.error:
+All create_app services emit a compact completion summary via uvicorn.error at
+INFO: service, method/path, HTTP status, total and available stage times,
+input/output KiB, request ID and completion state. Failures use WARNING;
+successful health/readiness requests use DEBUG. Model loading logs remain INFO.
+Duplicate Uvicorn access records are suppressed for managed requests; set
+API_ACCESS_LOG=true to retain them. Normal summaries never include query strings.
+
+Use `uvicorn ... --log-level debug` to inspect detailed diagnostics:
 
 - request_received / request_complete: request ID, service, status, bytes consumed
   and sent, and elapsed time through ASGI response handling (not client receipt).

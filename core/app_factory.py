@@ -17,7 +17,7 @@ from core.auth import _AUTH_EXEMPT_PATHS, _configured_tokens, _request_token, _s
 from core.errors import _error_body, _safe_received, _public_error_details
 from core.settings import _is_production, _env_flag, runtime_settings
 from core.limits import check_request_size
-from core.telemetry import RequestTelemetry
+from core.telemetry import RequestTelemetry, configure_access_logging, request_timings
 
 logger = logging.getLogger('model_api')
 
@@ -34,6 +34,7 @@ def create_app(
     lifespan: Any = None,
 ) -> FastAPI:
     service = service_name or title.lower().replace(" ", "-")
+    configure_access_logging()
     docs_enabled = not _is_production() and _env_flag("API_DOCS_ENABLED", "true")
     app = FastAPI(
         title=title,
@@ -167,7 +168,10 @@ def create_app(
             try:
                 await asyncio.wait_for(inference_slots.acquire(), timeout=max(0.1, queue_timeout))
                 acquired = True
-                logging.getLogger("uvicorn.error").info(
+                timings = request_timings.get()
+                if timings is not None:
+                    timings["admission"] = (time.perf_counter()-queue_started)*1000
+                logging.getLogger("uvicorn.error").debug(
                     "admission_complete request_id=%s service=%s queue_wait_ms=%.2f",
                     request.state.request_id, service, (time.perf_counter()-queue_started)*1000,
                 )
@@ -195,7 +199,7 @@ def create_app(
                 response.headers[key] = value
         elapsed = round((time.perf_counter() - request.state.started_at) * 1000, 2)
         response.headers["Server-Timing"] = f"app;dur={elapsed}"
-        logger.info(
+        logger.debug(
             "request_id=%s method=%s path=%s status=%s duration_ms=%s",
             request.state.request_id,
             request.method,

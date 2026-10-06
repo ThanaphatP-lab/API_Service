@@ -10,6 +10,33 @@ from contextvars import ContextVar
 
 logger = logging.getLogger("uvicorn.error")
 current_request = ContextVar("telemetry_request", default="-")
+request_timings = ContextVar("telemetry_timings", default=None)
+
+
+class ManagedAccessFilter(logging.Filter):
+    """Managed requests already have a completion summary; leave other apps alone."""
+    def filter(self, record):
+        return (current_request.get() == "-" or
+                os.getenv("API_ACCESS_LOG", "false").lower() in {"1", "true", "yes", "on"})
+
+
+def configure_access_logging():
+    # Application logs use the same handler/level as Uvicorn, without enabling
+    # noisy DEBUG output from all third-party libraries via the root logger.
+    app_logger = logging.getLogger("model_api")
+    server_logger = logging.getLogger("uvicorn.error")
+    configured = os.getenv("APP_LOG_LEVEL", "").lower()
+    app_logger.setLevel(logging.DEBUG if configured == "debug" else
+                        logging.INFO if configured == "info" else server_logger.getEffectiveLevel())
+    handler_owner = server_logger
+    while not handler_owner.handlers and handler_owner.parent is not None:
+        handler_owner = handler_owner.parent
+    if handler_owner.handlers:
+        app_logger.handlers = list(handler_owner.handlers)
+        app_logger.propagate = False
+    access = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, ManagedAccessFilter) for f in access.filters):
+        access.addFilter(ManagedAccessFilter())
 
 
 def resources():
@@ -28,8 +55,12 @@ def resources():
 def timed_stage(name):
     def decorate(fn):
         def report(start, outcome):
-            logger.info("stage_complete request_id=%s stage=%s duration_ms=%.2f outcome=%s",
-                        current_request.get(), name, (time.perf_counter() - start) * 1000, outcome)
+            elapsed = (time.perf_counter() - start) * 1000
+            timings = request_timings.get()
+            if timings is not None:
+                timings[name] = timings.get(name, 0.0) + elapsed
+            logger.debug("stage_complete request_id=%s stage=%s duration_ms=%.2f outcome=%s",
+                         current_request.get(), name, elapsed, outcome)
         if inspect.iscoroutinefunction(fn):
             @functools.wraps(fn)
             async def async_wrapper(*args, **kwargs):
@@ -67,9 +98,11 @@ class RequestTelemetry:
         rid = supplied if supplied and len(supplied) <= 128 and supplied.replace("-", "").replace("_", "").isalnum() else "req_" + uuid.uuid4().hex
         scope.setdefault("state", {})["request_id"] = rid
         token = current_request.set(rid)
+        timings = {}
+        timings_token = request_timings.set(timings)
         start, status, received, sent = time.perf_counter(), 500, 0, 0
         complete = False
-        logger.info("request_received request_id=%s service=%s method=%s path=%s",
+        logger.debug("request_received request_id=%s service=%s method=%s path=%s",
                     rid, self.service, scope["method"], scope["path"])
         async def measured_receive():
             nonlocal received
@@ -88,7 +121,16 @@ class RequestTelemetry:
         try:
             await self.app(scope, measured_receive, measured_send)
         finally:
-            logger.info("request_complete request_id=%s service=%s status=%s duration_ms=%.2f received_bytes=%s sent_bytes=%s response_complete=%s resources=%s",
-                        rid, self.service, status, (time.perf_counter()-start)*1000,
-                        received, sent, complete, resources())
+            health = scope["path"] in {"/health", "/api/v1/health", "/api/v1/readiness"}
+            log = logger.warning if status >= 400 or not complete else logger.debug if health else logger.info
+            stage_names = {"receive_decode_verify_images": "receive", "upstream_http_roundtrip": "upstream",
+                           "inference_including_load_and_adaptation": "infer", "admission": "queue"}
+            stages = " ".join(f"{stage_names.get(k, k)}={v:.0f}ms" for k, v in timings.items())
+            log("request_complete service=%s %s %s status=%s total=%.0fms %s in=%.1fKiB out=%.1fKiB request_id=%s complete=%s",
+                self.service, scope["method"], scope["path"], status,
+                (time.perf_counter()-start)*1000, stages, received/1024, sent/1024, rid, complete)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("request_resources request_id=%s resources=%s received_bytes=%s sent_bytes=%s",
+                             rid, resources(), received, sent)
+            request_timings.reset(timings_token)
             current_request.reset(token)
