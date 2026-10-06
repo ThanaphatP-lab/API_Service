@@ -50,6 +50,18 @@ def test_restart_and_uvicorn_pass_selected_level():
     assert '--workers 1 --log-level "$STACK_LOG_LEVEL"' in SCRIPT
 
 
+def test_logs_options():
+    assert shell('parse_logs_options 200 --log-level debug; echo "$LOG_LINES $LOG_VIEW_LEVEL"; '
+                 'parse_logs_options; echo "$LOG_LINES $LOG_VIEW_LEVEL"') == ["200 debug", "100 info"]
+    assert 'export MODEL_DEBUG_LOG_FILE="$LOG_DIR/$service.debug.log"' in SCRIPT
+    assert 'tail -n "$LOG_LINES" -F "$selected_log"' in SCRIPT
+
+
+@pytest.mark.parametrize("options", ["--log-level", "--log-level invalid", "-5", "abc"])
+def test_invalid_logs_options(options):
+    assert shell(f'if parse_logs_options {options}; then echo accepted; else echo rejected; fi')[-1] == "rejected"
+
+
 @pytest.mark.parametrize("profile", ["all", "core-stack", "ocr-custom-stack", "layout-stack", "table-stack"])
 def test_profiles_start_exactly_one_detector(profile):
     names = shell(f"start_target_services {profile}")[0].split()

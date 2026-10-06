@@ -6,11 +6,36 @@ import inspect
 import logging
 import os
 import time
+from logging.handlers import RotatingFileHandler
 from contextvars import ContextVar
 
 logger = logging.getLogger("uvicorn.error")
 current_request = ContextVar("telemetry_request", default="-")
 request_timings = ContextVar("telemetry_timings", default=None)
+
+
+def configure_debug_file(server_logger, console_level):
+    """One bounded diagnostic file per launcher process; no root DEBUG logging."""
+    path = os.getenv("MODEL_DEBUG_LOG_FILE")
+    if not path:
+        return
+    # create_app can be called more than once in a process.
+    if any(getattr(h, "_model_debug_file", False) for h in server_logger.handlers):
+        return
+    owner = server_logger
+    while not owner.handlers and owner.parent is not None:
+        owner = owner.parent
+    handlers = list(owner.handlers)
+    for handler in handlers:
+        handler.setLevel(console_level)
+    handler = RotatingFileHandler(path, maxBytes=20 * 1024 * 1024,
+                                  backupCount=3, encoding="utf-8")
+    handler._model_debug_file = True
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+    server_logger.handlers = handlers + [handler]
+    server_logger.propagate = False
+    server_logger.setLevel(logging.DEBUG)
 
 
 class ManagedAccessFilter(logging.Filter):
@@ -26,8 +51,12 @@ def configure_access_logging():
     app_logger = logging.getLogger("model_api")
     server_logger = logging.getLogger("uvicorn.error")
     configured = os.getenv("APP_LOG_LEVEL", "").lower()
+    console_level = logging.DEBUG if configured == "debug" else logging.INFO
+    configure_debug_file(server_logger, console_level)
     app_logger.setLevel(logging.DEBUG if configured == "debug" else
                         logging.INFO if configured == "info" else server_logger.getEffectiveLevel())
+    if os.getenv("MODEL_DEBUG_LOG_FILE"):
+        app_logger.setLevel(logging.DEBUG)
     handler_owner = server_logger
     while not handler_owner.handlers and handler_owner.parent is not None:
         handler_owner = handler_owner.parent

@@ -1,7 +1,36 @@
 import asyncio
 import logging
+import io
 
 from core.telemetry import RequestTelemetry, current_request, timed_stage
+
+
+def test_debug_file_is_rotated_and_console_stays_info(tmp_path, monkeypatch):
+    from core.telemetry import configure_debug_file
+    log = logging.Logger("isolated")
+    console = io.StringIO()
+    log.addHandler(logging.StreamHandler(console))
+    path = tmp_path / "service.debug.log"
+    monkeypatch.setenv("MODEL_DEBUG_LOG_FILE", str(path))
+    try:
+        configure_debug_file(log, logging.INFO)
+        configure_debug_file(log, logging.INFO)
+        assert len(log.handlers) == 2
+        file_handler = log.handlers[-1]
+        assert file_handler.maxBytes == 20 * 1024 * 1024
+        assert file_handler.backupCount == 3
+        log.debug("detail")
+        log.info("summary")
+        assert console.getvalue() == "summary\n"
+        assert "detail" in path.read_text(encoding="utf-8")
+        assert "summary" in path.read_text(encoding="utf-8")
+        file_handler.maxBytes = 100
+        for _ in range(20):
+            log.debug("rotation test record")
+        assert len(list(tmp_path.glob("service.debug.log*"))) == 4
+    finally:
+        for handler in log.handlers:
+            handler.close()
 
 
 def test_request_logs_rejection_and_body_without_sensitive_query(caplog):

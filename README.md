@@ -186,6 +186,25 @@ curl -X POST http://localhost:8080/api/v1/image-verifications ^
 
 ส่ง `X-Request-ID` เองได้ หากไม่ส่งระบบจะสร้าง `req_<uuid>` และคืนใน body/header
 
+## ดู log โดยไม่ restart
+
+Linux launcher เก็บ log ปกติที่ `logs/<service>.log` และ diagnostic log
+ที่ `logs/<service>.debug.log` โดยไฟล์ DEBUG หมุนเมื่อถึง 20 MiB และเก็บสำรอง 3 ไฟล์
+(ประมาณ 80 MiB ต่อ service; ไม่รวมไฟล์ log ปกติซึ่งยังต้องจัดการ retention เอง)
+
+```bash
+scripts/model-stack.sh logs gateway
+scripts/model-stack.sh logs gateway --log-level debug
+scripts/model-stack.sh logs rec-th 200 --log-level debug
+```
+
+กด Ctrl+C เพื่อหยุดดู log โดย service ยังทำงานอยู่ ต้อง restart service ที่เปิดไว้
+ก่อนอัปเดตครั้งเดียวเพื่อเริ่มเก็บ DEBUG หลังจากนั้นเปลี่ยนมุมมองได้ทันที
+DEBUG รวม application/Uvicorn error logger พร้อม timing, selection, queue และ resource
+ที่โค้ดมีให้ ไม่ได้เปิด DEBUG ของทุก third-party library หรือเก็บ stdout ของ Paddle
+ในไฟล์ diagnostic (ข้อความเหล่านั้นยังอยู่ใน log ปกติ) ไม่รองรับไฟล์ DEBUG ของ demo
+และคำสั่งนี้อ่านเฉพาะไฟล์ปัจจุบัน ไม่รวมไฟล์สำรองย้อนหลัง
+
 ## Error response ที่ใช้ debug
 
 ```json

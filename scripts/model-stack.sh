@@ -78,7 +78,7 @@ Usage:
   scripts/model-stack.sh check
   scripts/model-stack.sh status [service|profile|all]
   scripts/model-stack.sh readiness [service|profile|all]
-  scripts/model-stack.sh logs <service> [lines]
+  scripts/model-stack.sh logs <service> [lines] [--log-level info|debug]
 
 Profiles:
   core-stack        default production stack using split polygon det + rec OCR
@@ -96,7 +96,9 @@ Services:
   gateway demo
 
 Use detection for one process serving version=5/6 and model variants.
-Default log level is info on every start/restart. Use restart to change a running service.
+Normal logs show INFO and above. Diagnostic DEBUG logs are always saved for API services.
+Use logs <service> --log-level debug to view diagnostics without restarting.
+Diagnostic files rotate at 20 MiB with 3 backups. Demo has no diagnostic file.
 EOF
 }
 
@@ -415,6 +417,7 @@ start_service() {
     cd "$ROOT"
     export_service_environment "$service"
     export APP_LOG_LEVEL="$STACK_LOG_LEVEL"
+    export MODEL_DEBUG_LOG_FILE="$LOG_DIR/$service.debug.log"
     export API_ACCESS_LOG=false
     [[ "$STACK_LOG_LEVEL" == "debug" ]] && export API_ACCESS_LOG=true
     if [[ "$service" == "demo" ]]; then
@@ -523,6 +526,17 @@ parse_start_options() {
   done
 }
 
+parse_logs_options() {
+  LOG_LINES=100
+  LOG_VIEW_LEVEL=info
+  if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+    LOG_LINES="$1"
+    shift
+  fi
+  parse_start_options "$@" || return 2
+  LOG_VIEW_LEVEL="$STACK_LOG_LEVEL"
+}
+
 action="${1:-}"
 target="${2:-all}"
 if [[ "$action" == "start" || "$action" == "restart" ]]; then
@@ -556,14 +570,17 @@ case "$action" in
     ;;
   logs)
     service="${2:-}"
-    lines="${3:-100}"
     if [[ -z "$service" ]]; then usage; exit 2; fi
-    target_services "$service" >/dev/null
-    if [[ ! -f "$(log_file "$service")" ]]; then
-      echo "[ERROR] No log file for $service: $(log_file "$service")" >&2
+    resolved="$(target_services "$service")"
+    if [[ "$resolved" != "$service" ]]; then echo "[ERROR] logs requires one service, not a profile." >&2; exit 2; fi
+    parse_logs_options "${@:3}"
+    selected_log="$(log_file "$service")"
+    if [[ "$LOG_VIEW_LEVEL" == "debug" ]]; then selected_log="$LOG_DIR/$service.debug.log"; fi
+    if [[ ! -f "$selected_log" ]]; then
+      echo "[ERROR] No log file: $selected_log. API services started before this update need one restart; demo does not support DEBUG files." >&2
       exit 1
     fi
-    exec tail -n "$lines" -F "$(log_file "$service")"
+    exec tail -n "$LOG_LINES" -F "$selected_log"
     ;;
   help|-h|--help) usage ;;
   *) usage; exit 2 ;;
