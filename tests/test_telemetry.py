@@ -5,6 +5,35 @@ import io
 from core.telemetry import RequestTelemetry, current_request, timed_stage
 
 
+def test_access_log_copied_to_debug_once(tmp_path, monkeypatch):
+    from core.telemetry import configure_access_logging
+    names = ("uvicorn.error", "uvicorn.access", "model_api")
+    logs = {name: logging.Logger(name, logging.INFO) for name in names}
+    console = io.StringIO()
+    logs["uvicorn.access"].addHandler(logging.StreamHandler(console))
+    original_get_logger = logging.getLogger
+    monkeypatch.setattr(logging, "getLogger", lambda name=None: logs[name] if name in logs else original_get_logger(name))
+    monkeypatch.setenv("MODEL_DEBUG_LOG_FILE", str(tmp_path / "debug.log"))
+    monkeypatch.setenv("API_ACCESS_LOG", "true")
+    try:
+        configure_access_logging()
+        configure_access_logging()
+        logs["uvicorn.access"].info('%s - "%s %s HTTP/%s" %d',
+            "127.0.0.1:60404", "POST",
+            "/api/v1/text-recognition-batches?version=6&model=thai_ft_v1", "1.1", 200)
+        content = (tmp_path / "debug.log").read_text(encoding="utf-8")
+        assert content.count("127.0.0.1:60404") == 1
+        assert "version=6&model=thai_ft_v1" in content
+        assert 'HTTP/1.1" 200 OK' in content
+        assert "\x1b" not in content
+        assert console.getvalue().count("127.0.0.1:60404") == 1
+        handlers = logs["uvicorn.access"].handlers
+        assert handlers[-1] is logs["uvicorn.error"].handlers[-1]
+    finally:
+        for handler in logs["uvicorn.error"].handlers:
+            handler.close()
+
+
 def test_debug_file_is_rotated_and_console_stays_info(tmp_path, monkeypatch):
     from core.telemetry import configure_debug_file
     log = logging.Logger("isolated")
@@ -82,13 +111,15 @@ def test_stage_accumulates_without_info_noise(caplog):
         request_timings.reset(token)
 
 
-def test_access_log_filter_is_scoped_and_opt_in(monkeypatch):
+def test_access_log_filter_is_scoped_and_opt_out(monkeypatch):
     from core.telemetry import ManagedAccessFilter
     f = ManagedAccessFilter()
     monkeypatch.delenv("API_ACCESS_LOG", raising=False)
     assert f.filter(None)
     token = current_request.set("req_test")
     try:
+        assert f.filter(None)
+        monkeypatch.setenv("API_ACCESS_LOG", "false")
         assert not f.filter(None)
         monkeypatch.setenv("API_ACCESS_LOG", "true")
         assert f.filter(None)

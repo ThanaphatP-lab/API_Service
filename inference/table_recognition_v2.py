@@ -99,10 +99,26 @@ def get_model(selection: OCRModelPairSpec) -> TableRecognitionPipelineV2:
         detection_model_dir or "<official-model-cache>",
         recognition_model_dir or "<official-model-cache>",
     )
+    for spec, name, directory in (
+        (detection, detection_model_name, detection_model_dir),
+        (recognition, recognition_model_name, recognition_model_dir),
+    ):
+        logger.debug(
+            "TableV2 effective model load version=%s variant=%s model_name=%s model_dir=%s local_weights=%s",
+            spec.version, spec.variant, name,
+            directory or "<official-model-cache>", directory is not None,
+        )
     return TableRecognitionPipelineV2(**options)
 
 
 def infer(image_path: str, selection: OCRModelPairSpec) -> dict[str, Any]:
+    for component, spec in (("detection", selection.detection), ("recognition", selection.recognition)):
+        logger.debug(
+            "TableV2 registry selection component=%s version=%s variant=%s model_name=%s model_dir=%s local_weights=%s",
+            component, spec.version, spec.variant, spec.model_name,
+            str(spec.model_dir) if spec.model_dir is not None else "<official-model-cache>",
+            spec.model_dir is not None,
+        )
     payload = adapt_table(get_model(selection).predict(image_path))
     payload["model_selection"] = selection.public_dict()
     return payload

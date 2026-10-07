@@ -418,8 +418,7 @@ start_service() {
     export_service_environment "$service"
     export APP_LOG_LEVEL="$STACK_LOG_LEVEL"
     export MODEL_DEBUG_LOG_FILE="$LOG_DIR/$service.debug.log"
-    export API_ACCESS_LOG=false
-    [[ "$STACK_LOG_LEVEL" == "debug" ]] && export API_ACCESS_LOG=true
+    export API_ACCESS_LOG="${API_ACCESS_LOG:-true}"
     if [[ "$service" == "demo" ]]; then
       exec nohup "$python" -m streamlit run "$module" --server.address "$host" --server.port "$port" --logger.level "$STACK_LOG_LEVEL"
     else

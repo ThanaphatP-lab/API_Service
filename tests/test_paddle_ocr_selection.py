@@ -25,6 +25,23 @@ def test_legacy_selection_and_cache(monkeypatch):
     assert module.get_model(selection) is module.get_model(selection)
 
 
+def test_selection_logged_even_on_cache_hit(monkeypatch, tmp_path, caplog):
+    import logging
+    module = load_module(monkeypatch)
+    from shared.model_variants import ModelVariantSpec, OCRModelPairSpec
+    pair = OCRModelPairSpec("det-v6__rec-v5", "thai_ft_v1",
+        ModelVariantSpec("detection", "v6", "baseline", "det", None, False),
+        ModelVariantSpec("recognition", "v5", "thai_ft_v1", "rec", tmp_path, True))
+    selected = module.PaddleOCRSelection("det", "rec", None, str(tmp_path), "cpu", pair)
+    with caplog.at_level(logging.DEBUG, logger="uvicorn.error"):
+        module.get_model(selected)
+        module.get_model(selected)
+    assert caplog.text.count("PaddleOCR model selection component=recognition") == 2
+    assert "version=v5 variant=thai_ft_v1" in caplog.text
+    assert "model_dir=" + str(tmp_path) in caplog.text
+    assert "version=v6 variant=baseline" in caplog.text
+
+
 def test_registry_pair_passes_weights_to_constructor(monkeypatch, tmp_path):
     module = load_module(monkeypatch)
     from shared.model_variants import ModelVariantSpec, OCRModelPairSpec

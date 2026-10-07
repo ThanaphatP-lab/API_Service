@@ -88,7 +88,20 @@ def _load_model(selection: PaddleOCRSelection) -> PaddleOCR:
 
 
 def get_model(selection: PaddleOCRSelection | None = None) -> PaddleOCR:
-    return _load_model(selection or selection_from_settings())
+    selected = selection or selection_from_settings()
+    for component, name, directory in (
+        ("detection", selected.detection_model_name, selected.detection_model_dir),
+        ("recognition", selected.recognition_model_name, selected.recognition_model_dir),
+    ):
+        spec = getattr(selected.pair, component) if selected.pair else None
+        logging.getLogger("uvicorn.error").debug(
+            "PaddleOCR model selection component=%s source=%s version=%s variant=%s model_name=%s model_dir=%s local_weights=%s",
+            component, "registry" if spec else "environment",
+            spec.version if spec else "<environment-model-name>",
+            spec.variant if spec else "<environment>", name,
+            directory or "<official-model-cache>", directory is not None,
+        )
+    return _load_model(selected)
 
 
 def _payload(

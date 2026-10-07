@@ -1,4 +1,4 @@
-"""Low-overhead timings; never log image contents, credentials, or query strings."""
+"""Low-overhead timings; access logs additionally include URL query strings."""
 from __future__ import annotations
 
 import functools
@@ -12,6 +12,21 @@ from contextvars import ContextVar
 logger = logging.getLogger("uvicorn.error")
 current_request = ContextVar("telemetry_request", default="-")
 request_timings = ContextVar("telemetry_timings", default=None)
+
+
+class DebugFileFormatter(logging.Formatter):
+    def __init__(self):
+        from uvicorn.logging import AccessFormatter
+        super().__init__("%(asctime)s %(levelname)s: %(message)s")
+        self.access = AccessFormatter(
+            '%(asctime)s %(levelname)s: %(client_addr)s - "%(request_line)s" %(status_code)s',
+            use_colors=False,
+        )
+
+    def format(self, record):
+        if record.name == "uvicorn.access":
+            return self.access.format(record)
+        return super().format(record)
 
 
 def configure_debug_file(server_logger, console_level):
@@ -32,17 +47,17 @@ def configure_debug_file(server_logger, console_level):
                                   backupCount=3, encoding="utf-8")
     handler._model_debug_file = True
     handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+    handler.setFormatter(DebugFileFormatter())
     server_logger.handlers = handlers + [handler]
     server_logger.propagate = False
     server_logger.setLevel(logging.DEBUG)
 
 
 class ManagedAccessFilter(logging.Filter):
-    """Managed requests already have a completion summary; leave other apps alone."""
+    """Allow opting out of managed access lines; leave other apps alone."""
     def filter(self, record):
         return (current_request.get() == "-" or
-                os.getenv("API_ACCESS_LOG", "false").lower() in {"1", "true", "yes", "on"})
+                os.getenv("API_ACCESS_LOG", "true").lower() in {"1", "true", "yes", "on"})
 
 
 def configure_access_logging():
@@ -64,6 +79,10 @@ def configure_access_logging():
         app_logger.handlers = list(handler_owner.handlers)
         app_logger.propagate = False
     access = logging.getLogger("uvicorn.access")
+    # Share the SAME rotating handler: two handlers rotating one file are unsafe.
+    for handler in server_logger.handlers:
+        if getattr(handler, "_model_debug_file", False) and handler not in access.handlers:
+            access.addHandler(handler)
     if not any(isinstance(f, ManagedAccessFilter) for f in access.filters):
         access.addFilter(ManagedAccessFilter())
 
