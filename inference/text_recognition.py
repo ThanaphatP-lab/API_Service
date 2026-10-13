@@ -32,6 +32,10 @@ def get_model(selection: ModelVariantSpec) -> TextRecognition:
     }
     if selection.model_dir is not None:
         options["model_dir"] = str(selection.model_dir)
+    if selection.input_shape is not None:
+        options["input_shape"] = selection.input_shape
+    logger.debug("Recognition input_shape version=%s variant=%s input_shape=%s",
+                 selection.version, selection.variant, selection.input_shape or "<model-default>")
     logger.info(
         "Loading recognition model version=%s variant=%s model_name=%s model_dir=%s device=%s",
         selection.version,

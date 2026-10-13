@@ -26,6 +26,7 @@ class ModelVariantSpec:
     model_name: str
     model_dir: Path | None
     requires_local_weights: bool
+    input_shape: tuple[int, int, int] | None = None
 
     @property
     def response_model(self) -> str:
@@ -181,6 +182,15 @@ def resolve_model_variant(
         )
 
     requires_local = bool(entry.get("requires_local_weights", canonical_variant != "baseline"))
+    shape = config.get("rec_input_shape") if kind == "recognition" else None
+    if shape is not None and (
+        not isinstance(shape, list) or len(shape) != 3
+        or any(type(value) is not int or value <= 0 for value in shape)
+    ):
+        raise ModelAPIError(
+            503, "MODEL_VARIANT_CONFIG_INVALID",
+            "Global rec_input_shape must be null or three positive integers [C, H, W].",
+        )
     configured_dir = _resolve_directory(entry.get("model_dir"))
 
     prefix = "DET" if kind == "detection" else "REC"
@@ -212,6 +222,7 @@ def resolve_model_variant(
         model_name=model_name,
         model_dir=usable_dir,
         requires_local_weights=requires_local,
+        input_shape=tuple(shape) if shape is not None else None,
     )
 
 

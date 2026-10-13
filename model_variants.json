@@ -1,4 +1,5 @@
 {
+  "rec_input_shape": null,
   "detection": {
     "v5": {
       "baseline": {

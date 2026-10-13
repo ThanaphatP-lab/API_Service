@@ -205,6 +205,61 @@ DEBUG รวม application/Uvicorn error logger พร้อม timing, selecti
 ในไฟล์ diagnostic (ข้อความเหล่านั้นยังอยู่ใน log ปกติ) ไม่รองรับไฟล์ DEBUG ของ demo
 และคำสั่งนี้อ่านเฉพาะไฟล์ปัจจุบัน ไม่รวมไฟล์สำรองย้อนหลัง
 
+## Security audit logs (Linux launcher)
+
+หลัง deploy ให้ restart service ที่ต้องการหนึ่งครั้ง launcher จะตั้ง
+`MODEL_AUDIT_LOG_FILE=logs/<service>.audit.jsonl` อัตโนมัติ แยกจาก normal/DEBUG
+หากรัน Uvicorn เอง ให้ตั้งตัวแปรนี้เป็น path ใน directory ที่จำกัดสิทธิ์ก่อนเริ่ม process
+หากไม่ได้ตั้ง จะไม่มี audit file (normal logs ยังทำงานเหมือนเดิม)
+
+```bash
+tail -n 100 -F logs/gateway.audit.jsonl
+tail -n 100 -F logs/rec-th.audit.jsonl
+```
+
+ไฟล์เป็น JSON หนึ่ง event ต่อบรรทัด มี UTC timestamp, service, request ID,
+audit_request_id ที่สร้างใหม่ต่อ request, method/path, auth result,
+credential_slot (primary/previous ไม่ใช่ผู้ใช้), ASGI client IP และ rate-limit key,
+route/status, bytes และ response completion ข้อมูล ASGI IP อาจถูก Uvicorn proxy
+middleware เปลี่ยนแล้ว จึงไม่อ้างว่าเป็น socket peer จริง ส่วน IP ที่ parse ไม่ได้จะไม่เก็บค่าดิบ
+auth events มี accepted/rejected/exempt/disabled; requests ที่จบก่อน auth
+เช่น rate limit ใช้ auth_result=not_evaluated
+
+upstream_started/http_response/completed/failed เชื่อมกันด้วย request_id และ
+audit_request_id ภายใน process เดียวกัน การเรียกหลาย upstream ใน request เดียวกัน
+ยังต้องเทียบ endpoint/เวลา ไม่ใช่ distributed tracing spans
+model-selection และ access logs ใน DEBUG มี request_id เพิ่มโดยไม่ใส่ข้อมูลเอกสาร
+
+ไม่เก็บ query, Authorization, cookies, body หรือ exception text ใน audit stream
+แต่ normal/DEBUG เดิมยังมี query string และ error details ต้องจำกัดสิทธิ์เข้าถึง
+audit ไม่ได้แก้ authentication หรือ TRUST_PROXY_HEADERS และยังใช้ request ID
+เดิมเพื่อไม่กระทบ client; audit_request_id ช่วยแยก ID ที่ client ส่งซ้ำ
+
+request_body_bytes_read นับเฉพาะ body ที่แอปอ่าน; response_body_bytes_attempted
+ไม่ใช่ network bytes ที่ client ยืนยันรับแล้ว หาก outer server-error response
+อยู่นอก middleware จะบันทึก status=null, response_complete=false และ measurement_scope
+ระบุข้อจำกัด ไม่สามารถใช้ event นี้พิสูจน์ว่าไม่มีข้อมูลถูกส่งออก
+
+หมุนไฟล์ที่ 20 MiB พร้อมสำรอง 10 ไฟล์ (ประมาณ 220 MiB ต่อ service)
+ไม่ใช่ retention แบบจำนวนวัน และไม่ใช่ immutable storage ควรส่งสำเนาไปที่เก็บกลาง
+normal log ยังไม่มี rotation อัตโนมัติ ก่อน deploy/restart ควรสำรองหลักฐานเดิม
+ห้ามส่งไฟล์ log ที่อาจมีข้อมูลส่วนบุคคลไปช่องทางสาธารณะ
+
+## REC leaf input shape
+
+`model_variants.json` รองรับ `rec_input_shape` ที่ root ของ JSON เช่น
+`"rec_input_shape": [3, 48, 320]` (C, H, W) ใช้ร่วมกันทุก REC version/variant
+หรือ `null`/ไม่ระบุเพื่อใช้ model default ไม่อ่าน `input_shape` ราย variant อีกต่อไป
+ค่าเริ่มเป็น null เพื่อไม่เปลี่ยน preprocessing
+ของโมเดลที่ใช้งานอยู่โดยไม่ทราบ export shape จริง ต้องเลือกค่าให้เข้ากับน้ำหนักที่ export
+ระบบตรวจเพียงสามจำนวนเต็มบวก ไม่รับประกันความเข้ากันได้กับ architecture
+
+ใช้กับ REC leaf ทั้ง single/batch และ OCR custom ที่เรียก REC leaf; ยังไม่ส่งค่านี้
+ให้ integrated OCR-Paddle/Table V2 การเรียก API ใช้ version/model เดิม ไม่รับ shape
+จาก query ตัว shape เป็นส่วนหนึ่งของ cache key และแสดงใน DEBUG ตอนโหลดโมเดล
+แก้ registry แล้ว restart rec-th (และ gateway หากโหลด registry ไว้แล้ว)
+ทดสอบความแม่นยำและ memory กับภาพจริงก่อนใช้ production
+
 ## Error response ที่ใช้ debug
 
 ```json
