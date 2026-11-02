@@ -22,12 +22,12 @@ model_client = HTTPModelClient()
 app = create_app("Document Layout Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
-@app.post("/api/v1/document-layouts", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/document-layouts", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def document_layouts(request: Request) -> dict:
     return await _document_layouts(request, multiple=False)
 
 
-@app.post("/api/v1/document-layout-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/document-layout-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def document_layout_batches(request: Request) -> dict:
     return await _document_layouts(request, multiple=True)
 
@@ -70,7 +70,7 @@ async def _document_layouts(request: Request, *, multiple: bool) -> dict:
         image.cleanup()
 
 
-@app.get("/api/v1/readiness", tags=["Operations"])
+@app.get("/paddle/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
     await asyncio.gather(
         asyncio.to_thread(model_client.readiness, LAYOUT_SERVICE_URL, request_id=request_id(request)),

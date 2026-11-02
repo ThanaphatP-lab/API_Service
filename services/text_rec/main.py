@@ -65,7 +65,7 @@ async def queued_inference(request, images, selected, *, multiple):
             "raw_output": [item for chunk in chunks for item in chunk.get("raw_output", [])]}
 
 
-@app.post("/api/v1/text-recognitions", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-recognitions", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/v1/textrecognition", include_in_schema=False)
 @app.post("/v1/textdetection", include_in_schema=False)
 @app.post("/predict", include_in_schema=False)
@@ -114,7 +114,7 @@ async def predict(
             image.cleanup()
 
 
-@app.post("/api/v1/text-recognition-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-recognition-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def recognize_batch(
     request: Request,
     version: str | None = None,
@@ -162,7 +162,7 @@ async def recognize_batch(
             images.cleanup()
 
 
-@app.get("/api/v1/readiness", tags=["Operations"])
+@app.get("/paddle/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request):
     def load(_):
         try:

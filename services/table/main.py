@@ -17,7 +17,7 @@ SERVICE_NAME = "leaf-table-structure"
 app = create_app("Table Structure Recognition API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
-@app.post("/api/v1/table-structures", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-structures", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(request: Request) -> dict[str, Any]:
     image = await parse_image_request(request)
@@ -34,7 +34,7 @@ async def predict(request: Request) -> dict[str, Any]:
         image.cleanup()
 
 
-@app.post("/api/v1/table-structure-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-structure-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def predict_batch(request: Request) -> dict[str, Any]:
     images = await parse_image_request(request, multiple=True)
     try:

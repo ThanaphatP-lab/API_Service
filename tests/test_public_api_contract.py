@@ -35,7 +35,7 @@ def test_hidden_legacy_routes_remain_outside_openapi():
 
 def test_success_envelope_matches_frozen_contract():
     response = TestClient(gateway.app).get(
-        "/api/v1/health",
+        "/paddle/api/v1/health",
         headers={"X-Request-ID": "req_phase0_contract"},
     )
 
@@ -50,7 +50,7 @@ def test_success_envelope_matches_frozen_contract():
 
 def test_error_envelope_matches_frozen_contract():
     response = TestClient(gateway.app).post(
-        "/api/v1/text-recognitions",
+        "/paddle/api/v1/text-recognitions",
         json={},
         headers={"X-Request-ID": "req_phase0_error"},
     )

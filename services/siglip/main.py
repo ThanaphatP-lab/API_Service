@@ -18,13 +18,13 @@ SERVICE_NAME = "leaf-image-classification"
 app = create_app("SigLIP Zero-shot Classification API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
-@app.post("/api/v1/image-classifications", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/image-classifications", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(request: Request) -> dict[str, Any]:
     return await _predict(request, multiple=False)
 
 
-@app.post("/api/v1/image-classification-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/image-classification-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def predict_batch(request: Request) -> dict[str, Any]:
     return await _predict(request, multiple=True)
 

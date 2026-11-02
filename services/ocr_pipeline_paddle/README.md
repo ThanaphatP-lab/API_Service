@@ -2,7 +2,7 @@
 
 Gateway endpoints (POST):
 
-- `/api/v1/ocr-results?engine=paddle&det_version=6&rec_version=5&rec_model=thai_ft_v1`
+- `/paddle/api/v1/ocr-results?engine=paddle&det_version=6&rec_version=5&rec_model=thai_ft_v1`
 
 Both single and batch support independent `det_version` / `rec_version` (5/v5,
 6/v6). Each overrides the common `version` (or `ocr_version`) for that module.
@@ -12,8 +12,8 @@ variants at the gateway require a common version or their own module version.
 Mixed-generation response metadata contains each module's actual version and
 a pair version such as `det-v6__rec-v5`. Cache keys include both selections.
 
-- `/api/v1/ocr-results?engine=paddle&version=5&model=thai_ft_v1`
-- `/api/v1/ocr-result-batches?engine=paddle&version=5&det_model=baseline&rec_model=thai_ft_v1`
+- `/paddle/api/v1/ocr-results?engine=paddle&version=5&model=thai_ft_v1`
+- `/paddle/api/v1/ocr-result-batches?engine=paddle&version=5&det_model=baseline&rec_model=thai_ft_v1`
 
 The pipeline service exposes the same paths without requiring `engine`.
 Query parameters override matching multipart/JSON fields. `ocr_version` and

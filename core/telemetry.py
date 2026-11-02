@@ -8,6 +8,7 @@ import os
 import time
 from logging.handlers import RotatingFileHandler
 from contextvars import ContextVar
+from core.audit import audit_context, configure_audit, emit
 
 logger = logging.getLogger("uvicorn.error")
 current_request = ContextVar("telemetry_request", default="-")
@@ -25,8 +26,11 @@ class DebugFileFormatter(logging.Formatter):
 
     def format(self, record):
         if record.name == "uvicorn.access":
-            return self.access.format(record)
-        return super().format(record)
+            return self.access.format(record) + " request_id=" + current_request.get()
+        rendered = super().format(record)
+        if current_request.get() != "-" and "request_id=" not in rendered:
+            rendered += " request_id=" + current_request.get()
+        return rendered
 
 
 def configure_debug_file(server_logger, console_level):
@@ -61,6 +65,7 @@ class ManagedAccessFilter(logging.Filter):
 
 
 def configure_access_logging():
+    configure_audit()
     # Application logs use the same handler/level as Uvicorn, without enabling
     # noisy DEBUG output from all third-party libraries via the root logger.
     app_logger = logging.getLogger("model_api")
@@ -145,11 +150,22 @@ class RequestTelemetry:
         supplied = headers.get(b"x-request-id", b"").decode("latin1").strip()
         rid = supplied if supplied and len(supplied) <= 128 and supplied.replace("-", "").replace("_", "").isalnum() else "req_" + uuid.uuid4().hex
         scope.setdefault("state", {})["request_id"] = rid
+        # Unique local ID disambiguates repeated client-supplied correlation IDs.
+        client = scope.get("client")
+        context = {"service": self.service, "request_id": rid,
+                   "audit_request_id": uuid.uuid4().hex,
+                   "method": scope["method"], "path": scope["path"],
+                   "asgi_client_ip": client[0] if client else None,
+                   "client_ip_source": "asgi_scope_may_be_proxy_rewritten",
+                   "auth_result": "not_evaluated"}
+        audit_token = audit_context.set(context)
+        emit("request_started")
         token = current_request.set(rid)
         timings = {}
         timings_token = request_timings.set(timings)
         start, status, received, sent = time.perf_counter(), 500, 0, 0
         complete = False
+        response_started = False
         logger.debug("request_received request_id=%s service=%s method=%s path=%s",
                     rid, self.service, scope["method"], scope["path"])
         async def measured_receive():
@@ -158,9 +174,10 @@ class RequestTelemetry:
             received += len(message.get("body", b""))
             return message
         async def measured_send(message):
-            nonlocal status, sent, complete
+            nonlocal status, sent, complete, response_started
             if message["type"] == "http.response.start":
                 status = message["status"]
+                response_started = True
             if message["type"] == "http.response.body":
                 sent += len(message.get("body", b""))
             await send(message)
@@ -169,7 +186,14 @@ class RequestTelemetry:
         try:
             await self.app(scope, measured_receive, measured_send)
         finally:
-            health = scope["path"] in {"/health", "/api/v1/health", "/api/v1/readiness"}
+            route = scope.get("route")
+            emit("request_completed", route=getattr(route, "path", None),
+                 status=status if response_started else None,
+                 duration_ms=round((time.perf_counter()-start)*1000, 2),
+                 request_body_bytes_read=received, response_body_bytes_attempted=sent,
+                 response_started=response_started, response_complete=complete,
+                 measurement_scope="application_middleware_not_outer_server_errors")
+            health = scope["path"] in {"/health", "/paddle/api/v1/health", "/paddle/api/v1/readiness"}
             log = logger.warning if status >= 400 or not complete else logger.debug if health else logger.info
             stage_names = {"receive_decode_verify_images": "receive", "upstream_http_roundtrip": "upstream",
                            "inference_including_load_and_adaptation": "infer", "admission": "queue"}
@@ -182,3 +206,4 @@ class RequestTelemetry:
                              rid, resources(), received, sent)
             request_timings.reset(timings_token)
             current_request.reset(token)
+            audit_context.reset(audit_token)

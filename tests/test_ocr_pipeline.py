@@ -44,7 +44,7 @@ def test_remote_ocr_chunks_recognition_and_forwards_model_selection(monkeypatch,
                 "multiple": multiple,
             }
         )
-        if endpoint == "/api/v1/text-detections":
+        if endpoint == "/paddle/api/v1/text-detections":
             polygons = [
                 [[0, 0], [5, 0], [5, 3], [0, 3]]
                 for _ in range(5)
@@ -119,7 +119,7 @@ def test_custom_ocr_service_reads_model_selection_from_multipart(monkeypatch):
     client = TestClient(custom_service.app)
 
     response = client.post(
-        "/api/v1/ocr-results",
+        "/paddle/api/v1/ocr-results",
         files={"image": ("sample.png", buffer.getvalue(), "image/png")},
         data={
             "version": "6",

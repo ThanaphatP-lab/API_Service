@@ -323,7 +323,7 @@ function Show-ServiceReadiness([string]$Service) {
     if ($token) { $headers["Authorization"] = "Bearer $token" }
     Write-Host "--- $Service :$port readiness ---"
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/api/v1/readiness" -Headers $headers -TimeoutSec (Get-EnvironmentInteger "READINESS_TIMEOUT_SECONDS" 300)
+        $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/paddle/api/v1/readiness" -Headers $headers -TimeoutSec (Get-EnvironmentInteger "READINESS_TIMEOUT_SECONDS" 300)
         Write-Host $response.Content
         Write-Host "HTTP $($response.StatusCode)"
     }

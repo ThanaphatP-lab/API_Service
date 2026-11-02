@@ -23,7 +23,7 @@ app = create_app("TableRecognitionPipelineV2 API", MODEL_NAME, service_name=SERV
 logger = logging.getLogger("uvicorn.error")
 
 
-@app.post("/api/v1/table-model-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-model-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(
     request: Request,

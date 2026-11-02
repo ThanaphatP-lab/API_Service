@@ -13,7 +13,7 @@ def add_readiness_route(app: FastAPI, loader: Callable[[], Any]) -> None:
     service = str(app.state.service_name)
     model_name = str(app.state.model_name)
 
-    @app.get(f"/api/{API_VERSION}/readiness", tags=["Operations"])
+    @app.get(f"/paddle/api/{API_VERSION}/readiness", tags=["Operations"])
     def readiness(request: Request) -> dict[str, Any]:
         try:
             loader()

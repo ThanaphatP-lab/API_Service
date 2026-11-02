@@ -9,6 +9,7 @@ import requests
 
 from shared.contracts import ModelAPIError
 from core.telemetry import timed_stage
+from core.audit import audit_upstream, emit
 
 
 def chunked_paths(image_paths: list[Path], batch_size: int) -> list[list[Path]]:
@@ -32,6 +33,7 @@ def _internal_headers(request_id: str) -> dict[str, str]:
 
 
 @timed_stage("upstream_http_roundtrip")
+@audit_upstream
 def post_images(
     base_url: str,
     endpoint: str,
@@ -81,6 +83,8 @@ def post_images(
         for handle in handles:
             handle.close()
 
+    emit("upstream_http_response", request_id=request_id, upstream_endpoint=endpoint,
+         upstream_status=response.status_code)
     try:
         body = response.json()
     except ValueError as exc:
@@ -117,10 +121,13 @@ def post_images(
     return body["data"]
 
 
+@audit_upstream
 def get_readiness(base_url: str, *, request_id: str, timeout: float = 10.0) -> None:
-    url = f"{base_url.rstrip('/')}/api/v1/readiness"
+    url = f"{base_url.rstrip('/')}/paddle/api/v1/readiness"
     try:
         response = requests.get(url, headers=_internal_headers(request_id), timeout=timeout)
+        emit("upstream_http_response", request_id=request_id, upstream_endpoint="/paddle/api/v1/readiness",
+             upstream_status=response.status_code)
         response.raise_for_status()
     except requests.RequestException as exc:
         raise ModelAPIError(

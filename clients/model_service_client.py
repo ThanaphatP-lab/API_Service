@@ -7,17 +7,17 @@ from typing import Any, Literal, Protocol
 from shared import upstream
 
 ModelEndpoint = Literal[
-    "/api/v1/layout-predictions",
-    "/api/v1/layout-prediction-batches",
-    "/api/v1/image-classification-batches",
-    "/api/v1/text-detections",
-    "/api/v1/text-detection-batches",
-    "/api/v1/text-recognitions",
-    "/api/v1/text-recognition-batches",
-    "/api/v1/table-structures",
-    "/api/v1/table-structure-batches",
-    "/api/v1/ocr-results",
-    "/api/v1/image-classifications",
+    "/paddle/api/v1/layout-predictions",
+    "/paddle/api/v1/layout-prediction-batches",
+    "/paddle/api/v1/image-classification-batches",
+    "/paddle/api/v1/text-detections",
+    "/paddle/api/v1/text-detection-batches",
+    "/paddle/api/v1/text-recognitions",
+    "/paddle/api/v1/text-recognition-batches",
+    "/paddle/api/v1/table-structures",
+    "/paddle/api/v1/table-structure-batches",
+    "/paddle/api/v1/ocr-results",
+    "/paddle/api/v1/image-classifications",
 ]
 
 

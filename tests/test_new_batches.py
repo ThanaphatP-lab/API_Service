@@ -80,8 +80,8 @@ def test_gateway_batch_routes(monkeypatch, route, upstream):
         captured.update(kwargs)
         return {"results": [], "count": 0}
     monkeypatch.setattr(gateway, "_forward_multiple", forward)
-    assert TestClient(gateway.app).post("/api/v1/" + route).status_code == 200
-    assert captured == {"upstream": getattr(gateway, upstream), "endpoint": "/api/v1/" + route}
+    assert TestClient(gateway.app).post("/paddle/api/v1/" + route).status_code == 200
+    assert captured == {"upstream": getattr(gateway, upstream), "endpoint": "/paddle/api/v1/" + route}
 
 
 @pytest.mark.parametrize("service,module_name,endpoint", [
@@ -111,7 +111,7 @@ def test_leaf_batch_http_and_cleanup(monkeypatch, service, module_name, endpoint
     Image.new("RGB", (3, 3)).save(buffer, format="PNG")
     files = [("images", (name, buffer.getvalue(), "image/png")) for name in ("a.png", "b.png")]
     client = TestClient(module.app)
-    response = client.post("/api/v1/" + endpoint, files=files, data={"labels": '["text", "image"]'})
+    response = client.post("/paddle/api/v1/" + endpoint, files=files, data={"labels": '["text", "image"]'})
     assert response.status_code == 200
     assert response.json()["data"]["count"] == 2
     assert all(not p.exists() for p in paths_seen)
@@ -119,7 +119,7 @@ def test_leaf_batch_http_and_cleanup(monkeypatch, service, module_name, endpoint
         paths_seen.extend(Path(p) for p in paths)
         raise RuntimeError("test failure")
     monkeypatch.setattr(module, "infer_batch", fail)
-    assert client.post("/api/v1/" + endpoint, files=files, data={"labels": '["text"]'}).status_code == 500
+    assert client.post("/paddle/api/v1/" + endpoint, files=files, data={"labels": '["text"]'}).status_code == 500
     assert all(not p.exists() for p in paths_seen)
 
 
@@ -135,7 +135,7 @@ def test_document_batch_reuses_pipeline_per_page(monkeypatch):
     monkeypatch.setattr(service, "analyze_document_layout", analyze)
     buffer = io.BytesIO()
     Image.new("RGB", (3, 3)).save(buffer, format="PNG")
-    response = TestClient(service.app).post("/api/v1/document-layout-batches", files=[
+    response = TestClient(service.app).post("/paddle/api/v1/document-layout-batches", files=[
         ("images", ("a.png", buffer.getvalue(), "image/png")),
         ("images", ("b.png", buffer.getvalue(), "image/png")),
     ])

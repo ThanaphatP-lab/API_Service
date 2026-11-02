@@ -34,7 +34,7 @@ def test_gateway_readiness_is_degraded_when_one_optional_pipeline_is_down(monkey
             _not_ready(base_url, request_id=request_id, timeout=timeout)
 
     monkeypatch.setattr(gateway, "get_readiness", probe)
-    response = client.get("/api/v1/readiness")
+    response = client.get("/paddle/api/v1/readiness")
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -58,7 +58,7 @@ def test_gateway_readiness_only_checks_enabled_pipelines(monkeypatch):
         checked.append(base_url)
 
     monkeypatch.setattr(gateway, "get_readiness", probe)
-    response = client.get("/api/v1/readiness")
+    response = client.get("/paddle/api/v1/readiness")
 
     assert response.status_code == 200
     assert response.json()["data"]["status"] == "ready"
@@ -77,7 +77,7 @@ def test_gateway_readiness_checks_direct_leaf_dependencies(monkeypatch):
         checked.append(base_url)
 
     monkeypatch.setattr(gateway, "get_readiness", probe)
-    response = client.get("/api/v1/readiness")
+    response = client.get("/paddle/api/v1/readiness")
 
     assert response.status_code == 200
     assert response.json()["data"]["status"] == "ready"
@@ -97,7 +97,7 @@ def test_gateway_readiness_fails_when_a_required_pipeline_is_down(monkeypatch):
             _not_ready(base_url, request_id=request_id, timeout=timeout)
 
     monkeypatch.setattr(gateway, "get_readiness", probe)
-    response = client.get("/api/v1/readiness")
+    response = client.get("/paddle/api/v1/readiness")
 
     assert response.status_code == 503
     error = response.json()["error"]
@@ -110,7 +110,7 @@ def test_gateway_readiness_fails_when_every_enabled_pipeline_is_down(monkeypatch
     monkeypatch.delenv("GATEWAY_REQUIRED_PIPELINES", raising=False)
     monkeypatch.setattr(gateway, "get_readiness", _not_ready)
 
-    response = client.get("/api/v1/readiness")
+    response = client.get("/paddle/api/v1/readiness")
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "NO_UPSTREAMS_READY"
@@ -124,13 +124,13 @@ def test_text_detection_version_routes_directly_to_v5(monkeypatch):
         return {"selected": "v5"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/text-detections?version=v5")
+    response = client.post("/paddle/api/v1/text-detections?version=v5")
 
     assert response.status_code == 200
     assert response.json() == {"selected": "v5"}
     assert forwarded == {
         "upstream": gateway.TEXT_DETECTION_URL,
-        "endpoint": "/api/v1/text-detections",
+        "endpoint": "/paddle/api/v1/text-detections",
     }
 
 
@@ -142,13 +142,13 @@ def test_text_detection_version_routes_directly_to_v6(monkeypatch):
         return {"selected": "v6"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/text-detections?version=v6")
+    response = client.post("/paddle/api/v1/text-detections?version=v6")
 
     assert response.status_code == 200
     assert response.json() == {"selected": "v6"}
     assert forwarded == {
         "upstream": gateway.TEXT_DETECTION_URL,
-        "endpoint": "/api/v1/text-detections",
+        "endpoint": "/paddle/api/v1/text-detections",
     }
 
 
@@ -162,7 +162,7 @@ def test_text_detection_without_version_routes_directly_to_leaf(monkeypatch):
         return {"selected": "configured-default"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/text-detections")
+    response = client.post("/paddle/api/v1/text-detections")
 
     assert response.status_code == 200
     assert response.json() == {"selected": "configured-default"}
@@ -170,7 +170,7 @@ def test_text_detection_without_version_routes_directly_to_leaf(monkeypatch):
 
 
 def test_text_detection_rejects_unknown_version():
-    response = client.post("/api/v1/text-detections?version=v7")
+    response = client.post("/paddle/api/v1/text-detections?version=v7")
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "UNSUPPORTED_MODEL_VERSION"
@@ -188,12 +188,12 @@ def test_text_detection_forwards_model_variant_and_numeric_version(monkeypatch):
         return {"selected": "thai_ft_v1"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/text-detections?version=6&model=thai_ft_v1")
+    response = client.post("/paddle/api/v1/text-detections?version=6&model=thai_ft_v1")
 
     assert response.status_code == 200
     assert forwarded == {
         "upstream": gateway.TEXT_DETECTION_URL,
-        "endpoint": "/api/v1/text-detections",
+        "endpoint": "/paddle/api/v1/text-detections",
         "extra_fields": {"version": "v6", "model": "thai_ft_v1"},
     }
 
@@ -212,7 +212,7 @@ def test_text_detection_uses_multipart_version_for_upstream_and_variant(monkeypa
 
     monkeypatch.setattr(gateway, "post_images", post_images)
     response = client.post(
-        "/api/v1/text-detections",
+        "/paddle/api/v1/text-detections",
         files={"image": ("sample.png", _png_bytes(), "image/png")},
         data={"version": "6", "model": "baseline"},
     )
@@ -220,14 +220,14 @@ def test_text_detection_uses_multipart_version_for_upstream_and_variant(monkeypa
     assert response.status_code == 200
     assert forwarded == {
         "base_url": gateway.TEXT_DETECTION_URL,
-        "endpoint": "/api/v1/text-detections",
+        "endpoint": "/paddle/api/v1/text-detections",
         "fields": {"version": "v6", "model": "baseline"},
         "multiple": False,
     }
 
 
 def test_text_detection_variant_requires_version():
-    response = client.post("/api/v1/text-detections?model=thai_ft_v1")
+    response = client.post("/paddle/api/v1/text-detections?model=thai_ft_v1")
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "MODEL_VERSION_REQUIRED"
@@ -245,12 +245,12 @@ def test_text_recognition_forwards_version_and_model(monkeypatch):
         return {"selected": "thai_ft_v2"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/text-recognitions?version=6&model=thai_ft_v2")
+    response = client.post("/paddle/api/v1/text-recognitions?version=6&model=thai_ft_v2")
 
     assert response.status_code == 200
     assert forwarded == {
         "upstream": gateway.REC_SERVICE_URL,
-        "endpoint": "/api/v1/text-recognitions",
+        "endpoint": "/paddle/api/v1/text-recognitions",
         "extra_fields": {"version": "v6", "model": "thai_ft_v2"},
     }
 
@@ -268,20 +268,20 @@ def test_table_v2_forwards_ocr_version_and_profile(monkeypatch):
 
     monkeypatch.setattr(gateway, "_forward", forward)
     response = client.post(
-        "/api/v1/table-model-results?ocr_version=5&profile=thai_ft_v1"
+        "/paddle/api/v1/table-model-results?ocr_version=5&profile=thai_ft_v1"
     )
 
     assert response.status_code == 200
     assert forwarded == {
         "upstream": gateway.TABLE_MODEL_URL,
-        "endpoint": "/api/v1/table-model-results",
+        "endpoint": "/paddle/api/v1/table-model-results",
         "extra_fields": {"version": "v5", "model": "thai_ft_v1"},
     }
 
 
 def test_table_v2_profile_requires_ocr_version():
     response = client.post(
-        "/api/v1/table-model-results?profile=thai_ft_v1"
+        "/paddle/api/v1/table-model-results?profile=thai_ft_v1"
     )
 
     assert response.status_code == 422
@@ -297,7 +297,7 @@ def test_table_v2_forwards_independent_recognition_variant(monkeypatch):
 
     monkeypatch.setattr(gateway, "_forward", forward)
     response = client.post(
-        "/api/v1/table-model-results?ocr_version=5&rec_model=thai_ft_v1"
+        "/paddle/api/v1/table-model-results?ocr_version=5&rec_model=thai_ft_v1"
     )
 
     assert response.status_code == 200
@@ -316,13 +316,13 @@ def test_ocr_result_batches_route_to_integrated_paddle(monkeypatch):
         return {"selected": "paddle"}
 
     monkeypatch.setattr(gateway, "_forward_multiple", forward_multiple)
-    response = client.post("/api/v1/ocr-result-batches?engine=paddle")
+    response = client.post("/paddle/api/v1/ocr-result-batches?engine=paddle")
 
     assert response.status_code == 200
     assert response.json() == {"selected": "paddle"}
     assert forwarded == {
         "upstream": gateway.OCR_PADDLE_URL,
-        "endpoint": "/api/v1/ocr-result-batches",
+        "endpoint": "/paddle/api/v1/ocr-result-batches",
     }
 
 
@@ -339,14 +339,14 @@ def test_custom_ocr_forwards_independent_det_and_rec_variants(monkeypatch):
 
     monkeypatch.setattr(gateway, "_forward", forward)
     response = client.post(
-        "/api/v1/ocr-results?engine=custom&version=6&model=baseline"
+        "/paddle/api/v1/ocr-results?engine=custom&version=6&model=baseline"
         "&det_model=thai_ft_v1&rec_model=thai_ft_v2"
     )
 
     assert response.status_code == 200
     assert forwarded == {
         "upstream": gateway.OCR_CUSTOM_URL,
-        "endpoint": "/api/v1/ocr-results",
+        "endpoint": "/paddle/api/v1/ocr-results",
         "extra_fields": {
             "version": "v6",
             "model": "baseline",
@@ -358,7 +358,7 @@ def test_custom_ocr_forwards_independent_det_and_rec_variants(monkeypatch):
 
 def test_custom_ocr_variant_requires_version():
     response = client.post(
-        "/api/v1/ocr-results?engine=custom&rec_model=thai_ft_v1"
+        "/paddle/api/v1/ocr-results?engine=custom&rec_model=thai_ft_v1"
     )
 
     assert response.status_code == 422
@@ -366,7 +366,7 @@ def test_custom_ocr_variant_requires_version():
 
 
 def test_ocr_result_batches_reject_custom_engine():
-    response = client.post("/api/v1/ocr-result-batches?engine=custom")
+    response = client.post("/paddle/api/v1/ocr-result-batches?engine=custom")
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
@@ -380,11 +380,11 @@ def test_image_classifications_route_forwards_directly_to_siglip(monkeypatch):
         return {"logits": [2.0, 0.0, -1.0], "device": "cuda:0"}
 
     monkeypatch.setattr(gateway, "_forward", forward)
-    response = client.post("/api/v1/image-classifications")
+    response = client.post("/paddle/api/v1/image-classifications")
 
     assert response.status_code == 200
     assert response.json()["logits"] == [2.0, 0.0, -1.0]
     assert forwarded == {
         "upstream": gateway.SIGLIP_URL,
-        "endpoint": "/api/v1/image-classifications",
+        "endpoint": "/paddle/api/v1/image-classifications",
     }

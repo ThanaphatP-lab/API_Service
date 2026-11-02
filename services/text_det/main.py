@@ -20,7 +20,7 @@ app = create_app("Text Detection API", MODEL_NAME, service_name=SERVICE_NAME)
 logger = logging.getLogger("uvicorn.error")
 
 
-@app.post("/api/v1/text-detections", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-detections", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/v1/textdetection", include_in_schema=False)
 @app.post("/predict", include_in_schema=False)
 async def predict(
@@ -67,7 +67,7 @@ async def predict(
         image.cleanup()
 
 
-@app.post("/api/v1/text-detection-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-detection-batches", tags=["Model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def predict_batch(
     request: Request,
     version: str | None = None,

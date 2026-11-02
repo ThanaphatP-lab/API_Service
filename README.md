@@ -23,21 +23,21 @@ Client → Gateway :8080
 
 | Method | URI | หน้าที่ | Fields เพิ่มเติม |
 | --- | --- | --- | --- |
-| GET | `/api/v1/health` | process health | - |
-| GET | `/api/v1/readiness` | ตรวจ pipeline และ upstream models | - |
-| GET | `/api/v1/services` | รายการ public resources | - |
-| POST | `/api/v1/document-layouts` | layout + text ROI | `expand_text_rois`, `auto_roi_mode` |
-| POST | `/api/v1/text-detections` | text boxes only (legacy Backend contract) | `version`, `model` |
-| POST | `/api/v1/text-detection-batches` | batch text boxes for several ROI crops | `version`, `model` |
-| POST | `/api/v1/text-recognitions` | recognition-only for one pre-cropped ROI | `version`, `model` |
-| POST | `/api/v1/text-recognition-batches` | recognition-only for pre-cropped ROI batch | `version`, `model` |
-| POST | `/api/v1/ocr-results?engine=custom` | OCR แบบต่อ detector/recognizer services | - |
-| POST | `/api/v1/ocr-results?engine=paddle` | PaddleOCR integrated pipeline | threshold fields |
-| POST | `/api/v1/ocr-result-batches?engine=paddle` | PaddleOCR integrated pipeline สำหรับหลาย ROI | threshold fields |
-| POST | `/api/v1/table-results` | wired/wireless selection + OCR | `table_mode`, `include_ocr` |
-| POST | `/api/v1/table-model-results` | TableRecognitionPipelineV2 with selectable OCR weights | `ocr_version`/`version`, `profile`/`model` |
-| POST | `/api/v1/image-classifications` | raw SigLIP logits สำหรับ Backend-owned scoring | `categories` |
-| POST | `/api/v1/image-verifications` | ตรวจ expected category ด้วย SigLIP | `image_category`, `categories` |
+| GET | `/paddle/api/v1/health` | process health | - |
+| GET | `/paddle/api/v1/readiness` | ตรวจ pipeline และ upstream models | - |
+| GET | `/paddle/api/v1/services` | รายการ public resources | - |
+| POST | `/paddle/api/v1/document-layouts` | layout + text ROI | `expand_text_rois`, `auto_roi_mode` |
+| POST | `/paddle/api/v1/text-detections` | text boxes only (legacy Backend contract) | `version`, `model` |
+| POST | `/paddle/api/v1/text-detection-batches` | batch text boxes for several ROI crops | `version`, `model` |
+| POST | `/paddle/api/v1/text-recognitions` | recognition-only for one pre-cropped ROI | `version`, `model` |
+| POST | `/paddle/api/v1/text-recognition-batches` | recognition-only for pre-cropped ROI batch | `version`, `model` |
+| POST | `/paddle/api/v1/ocr-results?engine=custom` | OCR แบบต่อ detector/recognizer services | - |
+| POST | `/paddle/api/v1/ocr-results?engine=paddle` | PaddleOCR integrated pipeline | threshold fields |
+| POST | `/paddle/api/v1/ocr-result-batches?engine=paddle` | PaddleOCR integrated pipeline สำหรับหลาย ROI | threshold fields |
+| POST | `/paddle/api/v1/table-results` | wired/wireless selection + OCR | `table_mode`, `include_ocr` |
+| POST | `/paddle/api/v1/table-model-results` | TableRecognitionPipelineV2 with selectable OCR weights | `ocr_version`/`version`, `profile`/`model` |
+| POST | `/paddle/api/v1/image-classifications` | raw SigLIP logits สำหรับ Backend-owned scoring | `categories` |
+| POST | `/paddle/api/v1/image-verifications` | ตรวจ expected category ด้วย SigLIP | `image_category`, `categories` |
 
 Swagger UI: `http://localhost:8080/docs`
 
@@ -81,8 +81,8 @@ Custom OCR รองรับการเลือก DET/REC variant ตลอ�
 crops ก่อนส่งเข้า Recognition leaf โดยอัตโนมัติ:
 
 ```text
-POST /api/v1/ocr-results?engine=custom&version=6&model=thai_ft_v1
-POST /api/v1/ocr-results?engine=custom&version=6&det_model=baseline&rec_model=thai_ft_v1
+POST /paddle/api/v1/ocr-results?engine=custom&version=6&model=thai_ft_v1
+POST /paddle/api/v1/ocr-results?engine=custom&version=6&det_model=baseline&rec_model=thai_ft_v1
 ```
 
 `OCR_RECOGNITION_BATCH_SIZE` มีค่าเริ่มต้น `64` และต้องไม่มากกว่า
@@ -95,7 +95,7 @@ POST /api/v1/ocr-results?engine=custom&version=6&det_model=baseline&rec_model=th
 Multipart:
 
 ```cmd
-curl -X POST "http://localhost:8080/api/v1/ocr-results?engine=custom" -F "image=@sample.jpg"
+curl -X POST "http://localhost:8080/paddle/api/v1/ocr-results?engine=custom" -F "image=@sample.jpg"
 ```
 
 JSON Base64:
@@ -109,7 +109,7 @@ JSON Base64:
 ตัวอย่าง Document Layout:
 
 ```cmd
-curl -X POST http://localhost:8080/api/v1/document-layouts ^
+curl -X POST http://localhost:8080/paddle/api/v1/document-layouts ^
   -F "image=@sample.jpg" ^
   -F "expand_text_rois=true" ^
   -F "auto_roi_mode=text-line"
@@ -120,7 +120,7 @@ curl -X POST http://localhost:8080/api/v1/document-layouts ^
 ตัวอย่าง PaddleOCR parameters:
 
 ```cmd
-curl -X POST "http://localhost:8080/api/v1/ocr-results?engine=paddle" ^
+curl -X POST "http://localhost:8080/paddle/api/v1/ocr-results?engine=paddle" ^
   -F "image=@sample.jpg" ^
   -F "text_det_unclip_ratio=2" ^
   -F "text_det_thresh=0.25" ^
@@ -130,7 +130,7 @@ curl -X POST "http://localhost:8080/api/v1/ocr-results?engine=paddle" ^
 ตัวอย่าง Table pipeline:
 
 ```cmd
-curl -X POST http://localhost:8080/api/v1/table-results ^
+curl -X POST http://localhost:8080/paddle/api/v1/table-results ^
   -F "image=@table.jpg" ^
   -F "table_mode=auto" ^
   -F "include_ocr=true"
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8080/api/v1/table-results ^
 ตัวอย่าง SigLIP verification:
 
 ```cmd
-curl -X POST http://localhost:8080/api/v1/image-verifications ^
+curl -X POST http://localhost:8080/paddle/api/v1/image-verifications ^
   -F "image=@qr.png" ^
   -F "image_category=qr_code"
 ```
@@ -409,7 +409,7 @@ DEMO_BIND_ADDRESS=127.0.0.1
 TRUST_PROXY_HEADERS=true
 ```
 
-URL ภายนอกจึงเป็น `https://api.example.com/api/v1/...` และ firewall ต้องไม่
+URL ภายนอกจึงเป็น `https://api.example.com/paddle/api/v1/...` และ firewall ต้องไม่
 เปิดพอร์ต `8001-8012` หรือ `8080` สู่ Internet
 
 ## Ports
@@ -440,17 +440,17 @@ network ภายในเข้าถึงโดยตรงจึงค่อ
 Leaf model endpoints:
 
 ```text
-POST :8001/api/v1/layout-predictions
-POST :8002/api/v1/text-detections
-POST :8003/api/v1/text-detections
-POST :8004/api/v1/text-recognitions
-POST :8004/api/v1/text-recognition-batches
-POST :8007/api/v1/table-structures
-POST :8008/api/v1/table-structures
-POST :8009/api/v1/image-classifications
+POST :8001/paddle/api/v1/layout-predictions
+POST :8002/paddle/api/v1/text-detections
+POST :8003/paddle/api/v1/text-detections
+POST :8004/paddle/api/v1/text-recognitions
+POST :8004/paddle/api/v1/text-recognition-batches
+POST :8007/paddle/api/v1/table-structures
+POST :8008/paddle/api/v1/table-structures
+POST :8009/paddle/api/v1/image-classifications
 ```
 
-`/predict` และ `/health` แบบเก่ายังเก็บเป็น hidden compatibility aliases ใน leaf services ระหว่างย้ายระบบ แต่โค้ดใหม่ควรเรียก `/api/v1/...`; production ปิด `/predict` เว้นแต่ตั้ง `LEGACY_ENDPOINTS_ENABLED=true`
+`/predict` และ `/health` แบบเก่ายังเก็บเป็น hidden compatibility aliases ใน leaf services ระหว่างย้ายระบบ แต่โค้ดใหม่ควรเรียก `/paddle/api/v1/...`; production ปิด `/predict` เว้นแต่ตั้ง `LEGACY_ENDPOINTS_ENABLED=true`
 
 ## รันด้วย Docker
 
@@ -590,10 +590,10 @@ The optional query parameter `model` defaults to `baseline`; `version` accepts
 `5`, `v5`, `6`, or `v6`.
 
 ```text
-POST /api/v1/text-detections?version=5
-POST /api/v1/text-detections?version=6&model=thai_ft_v1
-POST /api/v1/text-recognitions?version=5&model=baseline
-POST /api/v1/text-recognitions?version=6&model=thai_ft_v2
+POST /paddle/api/v1/text-detections?version=5
+POST /paddle/api/v1/text-detections?version=6&model=thai_ft_v1
+POST /paddle/api/v1/text-recognitions?version=5&model=baseline
+POST /paddle/api/v1/text-recognitions?version=6&model=thai_ft_v2
 ```
 
 Variant-to-weight mappings live in `model_variants.json`. The example mapping is:
@@ -617,10 +617,10 @@ parameter names are `ocr_version` and `profile`; `version` and `model` remain
 supported as backward-compatible aliases.
 
 ```text
-POST /api/v1/table-model-results?ocr_version=5&profile=baseline
-POST /api/v1/table-model-results?ocr_version=5&profile=thai_ft_v1
-POST /api/v1/table-model-results?version=6&model=thai_ft_v2
-POST /api/v1/table-model-results?ocr_version=5&det_model=baseline&rec_model=thai_ft_v1
+POST /paddle/api/v1/table-model-results?ocr_version=5&profile=baseline
+POST /paddle/api/v1/table-model-results?ocr_version=5&profile=thai_ft_v1
+POST /paddle/api/v1/table-model-results?version=6&model=thai_ft_v2
+POST /paddle/api/v1/table-model-results?ocr_version=5&det_model=baseline&rec_model=thai_ft_v1
 ```
 
 For a non-baseline profile, both the configured detection and recognition
@@ -718,7 +718,7 @@ Tests ครอบคลุม success/error contract, Base64 input, request ID,
 
 ## การเพิ่ม API v2 หรือเปลี่ยนโมเดล
 
-- ห้ามเปลี่ยน schema ของ `/api/v1` แบบ breaking change
+- ห้ามเปลี่ยน schema ของ `/paddle/api/v1` แบบ breaking change
 - เพิ่ม router/service ใหม่ใต้ `/api/v2`
 - ให้ Gateway route v1/v2 ไป pipeline คนละ deployment ได้
 - Leaf service เลือก model/weights ผ่าน `*_MODEL_NAME`, `*_MODEL_DIR`, `MODEL_VERSION`

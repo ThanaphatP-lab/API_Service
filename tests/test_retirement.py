@@ -63,7 +63,7 @@ def test_unversioned_gateway_calls_only_det_with_compat_format(monkeypatch, batc
     monkeypatch.setattr(gateway, "post_images", post)
     buffer = io.BytesIO()
     Image.new("RGB", (4, 4), "white").save(buffer, format="PNG")
-    route = "/api/v1/text-detection-batches" if batch else "/api/v1/text-detections"
+    route = "/paddle/api/v1/text-detection-batches" if batch else "/paddle/api/v1/text-detections"
     response = TestClient(gateway.app).post(route, files={
         "images" if batch else "image": ("a.png", buffer.getvalue(), "image/png"),
     })
@@ -89,17 +89,17 @@ def test_retired_local_code_is_absent():
 def test_layout_keeps_document_workflow_but_no_det_only_routes():
     from services.layout_pipeline import main as layout
     paths = layout.app.openapi()["paths"]
-    assert "/api/v1/document-layouts" in paths
-    assert "/api/v1/text-detections" not in paths
-    assert "/api/v1/text-detection-batches" not in paths
+    assert "/paddle/api/v1/document-layouts" in paths
+    assert "/paddle/api/v1/text-detections" not in paths
+    assert "/paddle/api/v1/text-detection-batches" not in paths
 
 
 def test_recognition_only_routes_cannot_be_reenabled(monkeypatch):
     from services.ocr_pipeline_custom import main as custom
     monkeypatch.setenv("OCR_CUSTOM_RECOGNITION_COMPAT_ENABLED", "true")
-    for path in ("/api/v1/text-recognitions", "/api/v1/text-recognition-batches"):
+    for path in ("/paddle/api/v1/text-recognitions", "/paddle/api/v1/text-recognition-batches"):
         assert TestClient(custom.app).post(path).status_code == 404
-    assert "/api/v1/ocr-results" in custom.app.openapi()["paths"]
+    assert "/paddle/api/v1/ocr-results" in custom.app.openapi()["paths"]
 
 
 @pytest.mark.parametrize("batch", [False, True])
@@ -120,7 +120,7 @@ def test_leaf_http_formats_legacy_only_on_request(monkeypatch, batch, legacy):
     spec.loader.exec_module(service)
     buffer = io.BytesIO()
     Image.new("RGB", (4, 6), "white").save(buffer, format="PNG")
-    endpoint = "/api/v1/text-detection-batches" if batch else "/api/v1/text-detections"
+    endpoint = "/paddle/api/v1/text-detection-batches" if batch else "/paddle/api/v1/text-detections"
     response = TestClient(service.app).post(endpoint, files={
         "images" if batch else "image": ("a.png", buffer.getvalue(), "image/png"),
     }, data={"response_contract": "legacy-layout" if legacy else "leaf", "version": "6"})

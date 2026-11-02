@@ -56,7 +56,7 @@ def _selection(request: Request, fields: dict[str, Any]):
     )
 
 
-@app.post("/api/v1/ocr-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/ocr-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(request: Request) -> dict[str, Any]:
     image = await parse_image_request(request)
@@ -77,7 +77,7 @@ async def predict(request: Request) -> dict[str, Any]:
         image.cleanup()
 
 
-@app.post("/api/v1/ocr-result-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/ocr-result-batches", tags=["Pipeline"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def predict_batch(request: Request) -> dict[str, Any]:
     """Run the integrated PaddleOCR pipeline for several backend ROI images."""
     images = await parse_image_request(request, multiple=True)

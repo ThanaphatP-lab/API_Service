@@ -167,7 +167,7 @@ def test_readiness_route_preserves_contract(monkeypatch, fails):
             raise RuntimeError("unavailable")
 
     add_readiness_route(app, loader)
-    response = TestClient(app).get("/api/v1/readiness")
+    response = TestClient(app).get("/paddle/api/v1/readiness")
     assert len(calls) == 1
     assert response.status_code == (503 if fails else 200)
     if fails:

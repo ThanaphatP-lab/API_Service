@@ -20,6 +20,7 @@ from core.limits import check_request_size
 from core.telemetry import RequestTelemetry, configure_access_logging, request_timings
 
 logger = logging.getLogger('model_api')
+from core.audit import authentication, emit, audit_context
 
 
 def create_app(
@@ -50,6 +51,8 @@ def create_app(
     expected_tokens = _configured_tokens(auth_token_env)
     for required_token_env in required_auth_token_envs:
         _configured_tokens(required_token_env)
+    emit("service_auth_configuration", service=service, auth_enabled=bool(expected_tokens),
+         production=_is_production())
 
     if docs_enabled:
         def secured_openapi() -> dict[str, Any]:
@@ -60,7 +63,7 @@ def create_app(
             schemes["BearerAuth"] = {"type": "http", "scheme": "bearer"}
             schemes["ApiKeyAuth"] = {"type": "apiKey", "in": "header", "name": "X-API-Key"}
             schema["security"] = [{"BearerAuth": []}, {"ApiKeyAuth": []}]
-            for health_path in ("/health", f"/api/{API_VERSION}/health"):
+            for health_path in ("/health", f"/paddle/api/{API_VERSION}/health"):
                 for operation in schema.get("paths", {}).get(health_path, {}).values():
                     if isinstance(operation, dict):
                         operation["security"] = []
@@ -107,6 +110,10 @@ def create_app(
                 headers=_security_headers({"X-Request-ID": request.state.request_id}),
             )
 
+        context = audit_context.get()
+        if context is not None:
+            context["rate_limit_client_key"] = client_key(request)
+            context["trust_proxy_headers"] = runtime_settings.trust_proxy_headers
         decision = None
         if request.url.path not in _AUTH_EXEMPT_PATHS:
             decision = limiter.check(client_key(request))
@@ -133,6 +140,7 @@ def create_app(
         ):
             provided_token = _request_token(request)
             if not token_matches(provided_token, expected_tokens):
+                authentication(request, "rejected", credential_type="bearer_or_api_key")
                 logger.warning(
                     "authentication_failed request_id=%s service=%s client=%s",
                     request.state.request_id,
@@ -151,6 +159,13 @@ def create_app(
                         "X-Request-ID": request.state.request_id,
                     }),
                 )
+
+            slot = "primary" if token_matches(provided_token, expected_tokens[:1]) else "previous"
+            authentication(request, "accepted", credential_slot=slot,
+                           credential_type="bearer" if request.headers.get("authorization", "").lower().startswith("bearer ") else "api_key")
+        else:
+            authentication(request, "exempt" if request.method == "OPTIONS" or request.url.path in _AUTH_EXEMPT_PATHS or documentation_path else "disabled")
+
 
         content_length = request.headers.get("content-length", "").strip()
         try:
@@ -294,7 +309,7 @@ def create_app(
             ),
         )
 
-    @app.get(f"/api/{API_VERSION}/health", tags=["Operations"])
+    @app.get(f"/paddle/api/{API_VERSION}/health", tags=["Operations"])
     def health(request: Request) -> dict[str, Any]:
         return success_response(
             request,

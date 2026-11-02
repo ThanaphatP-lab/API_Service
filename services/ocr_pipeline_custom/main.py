@@ -59,7 +59,7 @@ def _ocr_selection(
     }
 
 
-@app.post("/api/v1/ocr-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/ocr-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/predict", include_in_schema=False)
 async def predict(
     request: Request,
@@ -107,7 +107,7 @@ async def predict(
         image.cleanup()
 
 
-@app.get("/api/v1/readiness", tags=["Operations"])
+@app.get("/paddle/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
     await asyncio.gather(
         asyncio.to_thread(model_client.readiness, DET_SERVICE_URL, request_id=request_id(request)),

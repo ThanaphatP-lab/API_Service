@@ -12,7 +12,7 @@ def verify_image(
     classifier_url: str, request_id: str, client: ModelClient,
 ) -> dict[str, Any]:
     classification = client.infer(
-        classifier_url, "/api/v1/image-classifications", [image_path],
+        classifier_url, "/paddle/api/v1/image-classifications", [image_path],
         fields={"labels": [item["prompt"] for item in categories]},
         request_id=request_id,
     )

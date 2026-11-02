@@ -418,6 +418,7 @@ start_service() {
     export_service_environment "$service"
     export APP_LOG_LEVEL="$STACK_LOG_LEVEL"
     export MODEL_DEBUG_LOG_FILE="$LOG_DIR/$service.debug.log"
+    export MODEL_AUDIT_LOG_FILE="$LOG_DIR/$service.audit.jsonl"
     export API_ACCESS_LOG="${API_ACCESS_LOG:-true}"
     if [[ "$service" == "demo" ]]; then
       exec nohup "$python" -m streamlit run "$module" --server.address "$host" --server.port "$port" --logger.level "$STACK_LOG_LEVEL"
@@ -505,7 +506,7 @@ readiness_service() {
   curl -sS --max-time "$READINESS_TIMEOUT_SECONDS" \
     -H "Authorization: Bearer $token" \
     -w $'\nHTTP %{http_code}\n' \
-    "http://127.0.0.1:$port/api/v1/readiness" || true
+    "http://127.0.0.1:$port/paddle/api/v1/readiness" || true
 }
 
 parse_start_options() {

@@ -230,7 +230,7 @@ async def _forward(
         resolved_fields = field_resolver(image.fields) if field_resolver is not None else {}
         fields = {**image.fields, **resolved_fields, **(extra_fields or {})}
         selected_upstream = upstream(fields) if callable(upstream) else upstream
-        if endpoint == "/api/v1/text-detections":
+        if endpoint == "/paddle/api/v1/text-detections":
             fields.pop("response_contract", None)
             if not fields.get("version"):
                 fields["response_contract"] = "legacy-layout"
@@ -260,7 +260,7 @@ async def _forward_multiple(
         resolved_fields = field_resolver(images.fields) if field_resolver is not None else {}
         fields = {**images.fields, **resolved_fields, **(extra_fields or {})}
         selected_upstream = upstream(fields) if callable(upstream) else upstream
-        if endpoint == "/api/v1/text-detection-batches":
+        if endpoint == "/paddle/api/v1/text-detection-batches":
             fields.pop("response_contract", None)
             if not fields.get("version"):
                 fields["response_contract"] = "legacy-layout"
@@ -278,7 +278,7 @@ async def _forward_multiple(
         images.cleanup()
 
 
-@app.get("/api/v1/services", tags=["Discovery"])
+@app.get("/paddle/api/v1/services", tags=["Discovery"])
 def services(request: Request) -> dict[str, Any]:
     available = _active_upstreams()
     enabled = _pipeline_names("GATEWAY_ENABLED_PIPELINES", default_all=True)
@@ -286,24 +286,24 @@ def services(request: Request) -> dict[str, Any]:
     return success_response(
         request,
         {
-            "document_layouts": "/api/v1/document-layouts",
-            "document_layout_batches": "/api/v1/document-layout-batches",
-            "layout_prediction_batches": "/api/v1/layout-prediction-batches",
-            "image_classification_batches": "/api/v1/image-classification-batches",
-            "ocr_results": "/api/v1/ocr-results",
-            "ocr_result_batches": "/api/v1/ocr-result-batches",
-            "text_detections": "/api/v1/text-detections",
-            "text_detections_v5": "/api/v1/text-detections?version=v5",
-            "text_detections_v6": "/api/v1/text-detections?version=v6",
-            "text_detection_batches": "/api/v1/text-detection-batches",
-            "text_recognitions": "/api/v1/text-recognitions",
-            "text_recognition_batches": "/api/v1/text-recognition-batches",
-            "table_results": "/api/v1/table-results",
-            "table_model_results": "/api/v1/table-model-results",
-            "image_classifications": "/api/v1/image-classifications",
-            "image_verifications": "/api/v1/image-verifications",
+            "document_layouts": "/paddle/api/v1/document-layouts",
+            "document_layout_batches": "/paddle/api/v1/document-layout-batches",
+            "layout_prediction_batches": "/paddle/api/v1/layout-prediction-batches",
+            "image_classification_batches": "/paddle/api/v1/image-classification-batches",
+            "ocr_results": "/paddle/api/v1/ocr-results",
+            "ocr_result_batches": "/paddle/api/v1/ocr-result-batches",
+            "text_detections": "/paddle/api/v1/text-detections",
+            "text_detections_v5": "/paddle/api/v1/text-detections?version=v5",
+            "text_detections_v6": "/paddle/api/v1/text-detections?version=v6",
+            "text_detection_batches": "/paddle/api/v1/text-detection-batches",
+            "text_recognitions": "/paddle/api/v1/text-recognitions",
+            "text_recognition_batches": "/paddle/api/v1/text-recognition-batches",
+            "table_results": "/paddle/api/v1/table-results",
+            "table_model_results": "/paddle/api/v1/table-model-results",
+            "image_classifications": "/paddle/api/v1/image-classifications",
+            "image_verifications": "/paddle/api/v1/image-verifications",
             "capabilities": capabilities(available, enabled, required),
-            "capability_status": "configured; use /api/v1/readiness for health",
+            "capability_status": "configured; use /paddle/api/v1/readiness for health",
             "detection_topology": "unified" if TEXT_DETECTION_URL else "split",
             "compatibility": {
                 "unversioned_detection": "direct DET leaf with legacy response formatting",
@@ -315,34 +315,34 @@ def services(request: Request) -> dict[str, Any]:
     )
 
 
-@app.post("/api/v1/document-layouts", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/document-layouts", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def document_layouts(request: Request) -> dict[str, Any]:
     return await _forward(
         request,
         upstream=LAYOUT_PIPELINE_URL,
-        endpoint="/api/v1/document-layouts",
+        endpoint="/paddle/api/v1/document-layouts",
     )
 
 
-@app.post("/api/v1/document-layout-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/document-layout-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def document_layout_batches(request: Request) -> dict[str, Any]:
     return await _forward_multiple(request, upstream=LAYOUT_PIPELINE_URL,
-                                   endpoint="/api/v1/document-layout-batches")
+                                   endpoint="/paddle/api/v1/document-layout-batches")
 
 
-@app.post("/api/v1/layout-prediction-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/layout-prediction-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def layout_prediction_batches(request: Request) -> dict[str, Any]:
     return await _forward_multiple(request, upstream=LAYOUT_SERVICE_URL,
-                                   endpoint="/api/v1/layout-prediction-batches")
+                                   endpoint="/paddle/api/v1/layout-prediction-batches")
 
 
-@app.post("/api/v1/image-classification-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/image-classification-batches", tags=["Public model inference"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def image_classification_batches(request: Request) -> dict[str, Any]:
     return await _forward_multiple(request, upstream=SIGLIP_URL,
-                                   endpoint="/api/v1/image-classification-batches")
+                                   endpoint="/paddle/api/v1/image-classification-batches")
 
 
-@app.post("/api/v1/ocr-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/ocr-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def ocr_results(
     request: Request,
     engine: str = "custom",
@@ -377,13 +377,13 @@ async def ocr_results(
     return await _forward(
         request,
         upstream=upstream,
-        endpoint="/api/v1/ocr-results",
+        endpoint="/paddle/api/v1/ocr-results",
         extra_fields=selection,
         field_resolver=resolver,
     )
 
 
-@app.post("/api/v1/ocr-result-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/ocr-result-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def ocr_result_batches(request: Request) -> dict[str, Any]:
     """Run integrated PaddleOCR for a batch of backend ROI images."""
     engine = request.query_params.get("engine", "paddle").strip().lower()
@@ -397,12 +397,12 @@ async def ocr_result_batches(request: Request) -> dict[str, Any]:
     return await _forward_multiple(
         request,
         upstream=OCR_PADDLE_URL,
-        endpoint="/api/v1/ocr-result-batches",
+        endpoint="/paddle/api/v1/ocr-result-batches",
         field_resolver=lambda fields: _request_paddle_selection(request, fields),
     )
 
 
-@app.post("/api/v1/text-detections", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-detections", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/v1/textdetection", include_in_schema=False)
 async def text_detections(
     request: Request,
@@ -422,7 +422,7 @@ async def text_detections(
             if query_selects_model
             else lambda fields: _text_detector_upstream(fields.get("version"))
         ),
-        endpoint="/api/v1/text-detections",
+        endpoint="/paddle/api/v1/text-detections",
         extra_fields=selection if query_selects_model else None,
         field_resolver=(
             None
@@ -436,7 +436,7 @@ async def text_detections(
     )
 
 
-@app.post("/api/v1/text-detection-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-detection-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def text_detection_batches(
     request: Request,
     version: str | None = None,
@@ -455,7 +455,7 @@ async def text_detection_batches(
             if query_selects_model
             else lambda fields: _text_detector_upstream(fields.get("version"))
         ),
-        endpoint="/api/v1/text-detection-batches",
+        endpoint="/paddle/api/v1/text-detection-batches",
         extra_fields=selection if query_selects_model else None,
         field_resolver=(
             None
@@ -469,7 +469,7 @@ async def text_detection_batches(
     )
 
 
-@app.post("/api/v1/text-recognitions", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-recognitions", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 @app.post("/v1/textrecognition", include_in_schema=False)
 async def text_recognitions(
     request: Request,
@@ -487,7 +487,7 @@ async def text_recognitions(
     return await _forward(
         request,
         upstream=REC_SERVICE_URL,
-        endpoint="/api/v1/text-recognitions",
+        endpoint="/paddle/api/v1/text-recognitions",
         extra_fields=selection,
         field_resolver=(
             None
@@ -497,7 +497,7 @@ async def text_recognitions(
     )
 
 
-@app.post("/api/v1/text-recognition-batches", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/text-recognition-batches", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def text_recognition_batches(
     request: Request,
     version: str | None = None,
@@ -514,7 +514,7 @@ async def text_recognition_batches(
     return await _forward_multiple(
         request,
         upstream=REC_SERVICE_URL,
-        endpoint="/api/v1/text-recognition-batches",
+        endpoint="/paddle/api/v1/text-recognition-batches",
         extra_fields=selection,
         field_resolver=(
             None
@@ -524,16 +524,16 @@ async def text_recognition_batches(
     )
 
 
-@app.post("/api/v1/table-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def table_results(request: Request) -> dict[str, Any]:
     return await _forward(
         request,
         upstream=TABLE_PIPELINE_URL,
-        endpoint="/api/v1/table-results",
+        endpoint="/paddle/api/v1/table-results",
     )
 
 
-@app.post("/api/v1/table-model-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-model-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def table_model_results(
     request: Request,
     version: str | None = None,
@@ -559,7 +559,7 @@ async def table_model_results(
     return await _forward(
         request,
         upstream=TABLE_MODEL_URL,
-        endpoint="/api/v1/table-model-results",
+        endpoint="/paddle/api/v1/table-model-results",
         extra_fields=selection,
         field_resolver=(
             None
@@ -569,26 +569,26 @@ async def table_model_results(
     )
 
 
-@app.post("/api/v1/image-verifications", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/image-verifications", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def image_verifications(request: Request) -> dict[str, Any]:
     return await _forward(
         request,
         upstream=IMAGE_VERIFICATION_URL,
-        endpoint="/api/v1/image-verifications",
+        endpoint="/paddle/api/v1/image-verifications",
     )
 
 
-@app.post("/api/v1/image-classifications", tags=["Public model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/image-classifications", tags=["Public model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def image_classifications(request: Request) -> dict[str, Any]:
     """Expose raw SigLIP logits for Backend-owned verification scoring."""
     return await _forward(
         request,
         upstream=SIGLIP_URL,
-        endpoint="/api/v1/image-classifications",
+        endpoint="/paddle/api/v1/image-classifications",
     )
 
 
-@app.get("/api/v1/readiness", tags=["Operations"])
+@app.get("/paddle/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict[str, Any]:
     available = _active_upstreams()
     enabled = _pipeline_names("GATEWAY_ENABLED_PIPELINES", default_all=True)

@@ -50,29 +50,29 @@ def auth_headers(service: APIService) -> dict[str, str]:
 
 
 SERVICES: dict[str, APIService] = {
-    "layout_pipeline": APIService("Gateway: document layout", GATEWAY_URL, "/api/v1/document-layouts", "Layout + text detection + ROI filtering", "layout"),
-    "text_detection": APIService("Gateway: text detection (configured default)", GATEWAY_URL, "/api/v1/text-detections", "Detector selected by the layout pipeline configuration"),
-    "text_detection_v5": APIService("Gateway: PP-OCRv5 detector", GATEWAY_URL, "/api/v1/text-detections?version=v5", "Direct Gateway routing to the V5 leaf model"),
-    "text_detection_v6": APIService("Gateway: PP-OCRv6 detector", GATEWAY_URL, "/api/v1/text-detections?version=v6", "Direct Gateway routing to the V6 leaf model"),
-    "ocr_custom": APIService("Gateway: custom OCR", GATEWAY_URL, "/api/v1/ocr-results?engine=custom", "Detector -> crop -> batch recognition"),
-    "ocr_paddle": APIService("Gateway: PaddleOCR", GATEWAY_URL, "/api/v1/ocr-results?engine=paddle", "Integrated PaddleOCR detection + Thai recognition", "ocr"),
-    "table_pipeline": APIService("Gateway: table pipeline", GATEWAY_URL, "/api/v1/table-results", "Adaptive wired/wireless selection + grid analysis + OCR", "table"),
-    "table_v2_gateway": APIService("Gateway: TableRecognitionPipelineV2", GATEWAY_URL, "/api/v1/table-model-results", "Notebook (4) TableV2 raw model output", "table_v2"),
-    "image_verification": APIService("Gateway: image verification", GATEWAY_URL, "/api/v1/image-verifications", "SigLIP category verification", "verification"),
-    "layout": APIService("Leaf: PP-DocLayoutV3", endpoint("LAYOUT_URL", "http://localhost:8001"), "/api/v1/layout-predictions", "Canonical layout model output"),
-    "det_v5": APIService("Leaf: PP-OCRv5 detector", endpoint("DET_V5_URL", "http://localhost:8002"), "/api/v1/text-detections", "Canonical PP-OCRv5 detection output"),
-    "det_v6": APIService("Leaf: PP-OCRv6 detector", endpoint("DET_V6_URL", "http://localhost:8003"), "/api/v1/text-detections", "Canonical PP-OCRv6 detection output"),
-    "rec_th": APIService("Leaf: Thai text recognition", endpoint("REC_TH_URL", "http://localhost:8004"), "/api/v1/text-recognitions", "Use a pre-cropped text image"),
-    "table_wired": APIService("Leaf: SLANeXt wired", endpoint("TABLE_WIRED_URL", "http://localhost:8007"), "/api/v1/table-structures", "Raw wired table structure output"),
-    "table_wireless": APIService("Leaf: SLANeXt wireless", endpoint("TABLE_WIRELESS_URL", "http://localhost:8008"), "/api/v1/table-structures", "Raw wireless table structure output"),
-    "table_v2_leaf": APIService("Leaf: TableRecognitionPipelineV2", endpoint("TABLE_V2_URL", "http://localhost:8013"), "/api/v1/table-model-results", "Notebook (4) TableV2 inference/serialization", "table_v2"),
-    "siglip": APIService("Leaf: SigLIP classifier", endpoint("SIGLIP_URL", "http://localhost:8009"), "/api/v1/image-classifications", "Notebook (4) category-object or legacy label input", "classification"),
+    "layout_pipeline": APIService("Gateway: document layout", GATEWAY_URL, "/paddle/api/v1/document-layouts", "Layout + text detection + ROI filtering", "layout"),
+    "text_detection": APIService("Gateway: text detection (configured default)", GATEWAY_URL, "/paddle/api/v1/text-detections", "Detector selected by the layout pipeline configuration"),
+    "text_detection_v5": APIService("Gateway: PP-OCRv5 detector", GATEWAY_URL, "/paddle/api/v1/text-detections?version=v5", "Direct Gateway routing to the V5 leaf model"),
+    "text_detection_v6": APIService("Gateway: PP-OCRv6 detector", GATEWAY_URL, "/paddle/api/v1/text-detections?version=v6", "Direct Gateway routing to the V6 leaf model"),
+    "ocr_custom": APIService("Gateway: custom OCR", GATEWAY_URL, "/paddle/api/v1/ocr-results?engine=custom", "Detector -> crop -> batch recognition"),
+    "ocr_paddle": APIService("Gateway: PaddleOCR", GATEWAY_URL, "/paddle/api/v1/ocr-results?engine=paddle", "Integrated PaddleOCR detection + Thai recognition", "ocr"),
+    "table_pipeline": APIService("Gateway: table pipeline", GATEWAY_URL, "/paddle/api/v1/table-results", "Adaptive wired/wireless selection + grid analysis + OCR", "table"),
+    "table_v2_gateway": APIService("Gateway: TableRecognitionPipelineV2", GATEWAY_URL, "/paddle/api/v1/table-model-results", "Notebook (4) TableV2 raw model output", "table_v2"),
+    "image_verification": APIService("Gateway: image verification", GATEWAY_URL, "/paddle/api/v1/image-verifications", "SigLIP category verification", "verification"),
+    "layout": APIService("Leaf: PP-DocLayoutV3", endpoint("LAYOUT_URL", "http://localhost:8001"), "/paddle/api/v1/layout-predictions", "Canonical layout model output"),
+    "det_v5": APIService("Leaf: PP-OCRv5 detector", endpoint("DET_V5_URL", "http://localhost:8002"), "/paddle/api/v1/text-detections", "Canonical PP-OCRv5 detection output"),
+    "det_v6": APIService("Leaf: PP-OCRv6 detector", endpoint("DET_V6_URL", "http://localhost:8003"), "/paddle/api/v1/text-detections", "Canonical PP-OCRv6 detection output"),
+    "rec_th": APIService("Leaf: Thai text recognition", endpoint("REC_TH_URL", "http://localhost:8004"), "/paddle/api/v1/text-recognitions", "Use a pre-cropped text image"),
+    "table_wired": APIService("Leaf: SLANeXt wired", endpoint("TABLE_WIRED_URL", "http://localhost:8007"), "/paddle/api/v1/table-structures", "Raw wired table structure output"),
+    "table_wireless": APIService("Leaf: SLANeXt wireless", endpoint("TABLE_WIRELESS_URL", "http://localhost:8008"), "/paddle/api/v1/table-structures", "Raw wireless table structure output"),
+    "table_v2_leaf": APIService("Leaf: TableRecognitionPipelineV2", endpoint("TABLE_V2_URL", "http://localhost:8013"), "/paddle/api/v1/table-model-results", "Notebook (4) TableV2 inference/serialization", "table_v2"),
+    "siglip": APIService("Leaf: SigLIP classifier", endpoint("SIGLIP_URL", "http://localhost:8009"), "/paddle/api/v1/image-classifications", "Notebook (4) category-object or legacy label input", "classification"),
 }
 
 
 def get_health(service: APIService) -> tuple[bool, str]:
     try:
-        response = requests.get(f"{service.base_url}/api/v1/health", timeout=3)
+        response = requests.get(f"{service.base_url}/paddle/api/v1/health", timeout=3)
         body = response.json()
         if response.ok:
             data = body.get("data", {})

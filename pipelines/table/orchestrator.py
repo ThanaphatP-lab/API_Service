@@ -29,14 +29,14 @@ async def recognize_table(
             asyncio.to_thread(
                 client.infer,
                 service_urls[initial_model],
-                "/api/v1/table-structures",
+                "/paddle/api/v1/table-structures",
                 [image_path],
                 request_id=request_id,
             ),
         )
     ]
     if include_ocr:
-        initial_calls.append(("ocr", asyncio.to_thread(client.infer, ocr_url, "/api/v1/ocr-results", [image_path], request_id=request_id)))
+        initial_calls.append(("ocr", asyncio.to_thread(client.infer, ocr_url, "/paddle/api/v1/ocr-results", [image_path], request_id=request_id)))
     values = await asyncio.gather(*(call for _, call in initial_calls), return_exceptions=True)
     results: dict[str, dict] = {}
     upstream_failures: list[dict] = []
@@ -74,7 +74,7 @@ async def recognize_table(
                 batch = await asyncio.to_thread(
                     client.infer,
                     service_urls[initial_model],
-                    "/api/v1/table-structure-batches",
+                    "/paddle/api/v1/table-structure-batches",
                     crop_paths,
                     request_id=request_id,
                     multiple=True,
@@ -102,7 +102,7 @@ async def recognize_table(
             results[alternate_model] = await asyncio.to_thread(
                 client.infer,
                 service_urls[alternate_model],
-                "/api/v1/table-structures",
+                "/paddle/api/v1/table-structures",
                 [image_path],
                 request_id=request_id,
             )

@@ -21,7 +21,7 @@ model_client = HTTPModelClient()
 app = create_app("Table Recognition Pipeline API", MODEL_NAME, service_name=SERVICE_NAME)
 
 
-@app.post("/api/v1/table-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/table-results", tags=["Pipeline"], openapi_extra=IMAGE_REQUEST_OPENAPI)
 async def table_results(request: Request) -> dict:
     image = await parse_image_request(request)
     try:
@@ -37,7 +37,7 @@ async def table_results(request: Request) -> dict:
         image.cleanup()
 
 
-@app.get("/api/v1/readiness", tags=["Operations"])
+@app.get("/paddle/api/v1/readiness", tags=["Operations"])
 async def readiness(request: Request) -> dict:
     urls = [WIRED_SERVICE_URL, WIRELESS_SERVICE_URL, OCR_SERVICE_URL]
     await asyncio.gather(*(asyncio.to_thread(model_client.readiness, url, request_id=request_id(request)) for url in urls))

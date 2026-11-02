@@ -3,10 +3,10 @@
 POST through the Gateway, using repeated multipart `images` fields or JSON
 `{"images": ["<base64 image 1>", "<base64 image 2>"]}`:
 
-- `/api/v1/layout-prediction-batches`: Layout leaf results per image.
-- `/api/v1/image-classification-batches`: SigLIP results per image; supply a
+- `/paddle/api/v1/layout-prediction-batches`: Layout leaf results per image.
+- `/paddle/api/v1/image-classification-batches`: SigLIP results per image; supply a
   shared `categories` or `labels` list (JSON string in multipart, array in JSON).
-- `/api/v1/document-layout-batches`: full Layout + DET pipeline per page;
+- `/paddle/api/v1/document-layout-batches`: full Layout + DET pipeline per page;
   existing ROI options are shared across the batch. Timing remains per page.
 
 Each endpoint is also available on its respective existing service. Responses

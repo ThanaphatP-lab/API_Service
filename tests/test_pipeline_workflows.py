@@ -101,7 +101,7 @@ def test_semi_table_crops_are_cleaned_and_ocr_not_repeated(monkeypatch, tmp_path
 
     class SemiClient(FakeClient):
         def infer(self, base_url, endpoint, paths, **kwargs):
-            if endpoint == "/api/v1/table-structure-batches":
+            if endpoint == "/paddle/api/v1/table-structure-batches":
                 self.calls.append((base_url, endpoint, paths, kwargs))
                 assert kwargs["multiple"] is True
                 if batch_fails:
@@ -124,16 +124,16 @@ def test_http_client_preserves_transport_fields_and_errors(monkeypatch):
     monkeypatch.setattr(upstream, "post_images", post)
     fields = {"version": "v5", "model": "thai_ft_v1"}
     result = HTTPModelClient().infer(
-        "rec", "/api/v1/text-recognition-batches", [Path("crop.png")],
+        "rec", "/paddle/api/v1/text-recognition-batches", [Path("crop.png")],
         request_id="req_test", fields=fields, multiple=True,
     )
     assert result == {"predictions": []}
-    assert calls == [(("rec", "/api/v1/text-recognition-batches", [Path("crop.png")]),
+    assert calls == [(("rec", "/paddle/api/v1/text-recognition-batches", [Path("crop.png")]),
                       {"request_id": "req_test", "fields": fields, "multiple": True})]
     error = ModelAPIError(502, "UPSTREAM_MODEL_ERROR", "upstream failed")
     def fail(*args, **kwargs):
         raise error
     monkeypatch.setattr(upstream, "post_images", fail)
     with pytest.raises(ModelAPIError) as caught:
-        HTTPModelClient().infer("rec", "/api/v1/text-recognitions", [], request_id="r")
+        HTTPModelClient().infer("rec", "/paddle/api/v1/text-recognitions", [], request_id="r")
     assert caught.value is error

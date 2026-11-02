@@ -21,21 +21,21 @@ import requests
 
 
 CASES = [
-    ("health", "GET", "/api/v1/health", None, None),
-    ("readiness", "GET", "/api/v1/readiness", None, None),
-    ("services", "GET", "/api/v1/services", None, None),
-    ("document-layouts", "POST", "/api/v1/document-layouts", "single", None),
-    ("ocr-custom", "POST", "/api/v1/ocr-results?engine=custom", "single", None),
-    ("ocr-paddle", "POST", "/api/v1/ocr-results?engine=paddle", "single", None),
-    ("ocr-result-batches", "POST", "/api/v1/ocr-result-batches?engine=paddle", "batch", None),
-    ("text-detections-v5", "POST", "/api/v1/text-detections?version=5", "single", None),
-    ("text-detection-batches-v5", "POST", "/api/v1/text-detection-batches?version=5", "batch", None),
-    ("text-recognitions-v5", "POST", "/api/v1/text-recognitions?version=5", "single", None),
-    ("text-recognition-batches-v5", "POST", "/api/v1/text-recognition-batches?version=5", "batch", None),
-    ("table-results", "POST", "/api/v1/table-results", "single", None),
-    ("table-model-results", "POST", "/api/v1/table-model-results?ocr_version=5&profile=baseline", "single", None),
-    ("image-classifications", "POST", "/api/v1/image-classifications", "single", {"labels": '["a document"]'}),
-    ("image-verifications", "POST", "/api/v1/image-verifications", "single", {"image_category": "qr_code"}),
+    ("health", "GET", "/paddle/api/v1/health", None, None),
+    ("readiness", "GET", "/paddle/api/v1/readiness", None, None),
+    ("services", "GET", "/paddle/api/v1/services", None, None),
+    ("document-layouts", "POST", "/paddle/api/v1/document-layouts", "single", None),
+    ("ocr-custom", "POST", "/paddle/api/v1/ocr-results?engine=custom", "single", None),
+    ("ocr-paddle", "POST", "/paddle/api/v1/ocr-results?engine=paddle", "single", None),
+    ("ocr-result-batches", "POST", "/paddle/api/v1/ocr-result-batches?engine=paddle", "batch", None),
+    ("text-detections-v5", "POST", "/paddle/api/v1/text-detections?version=5", "single", None),
+    ("text-detection-batches-v5", "POST", "/paddle/api/v1/text-detection-batches?version=5", "batch", None),
+    ("text-recognitions-v5", "POST", "/paddle/api/v1/text-recognitions?version=5", "single", None),
+    ("text-recognition-batches-v5", "POST", "/paddle/api/v1/text-recognition-batches?version=5", "batch", None),
+    ("table-results", "POST", "/paddle/api/v1/table-results", "single", None),
+    ("table-model-results", "POST", "/paddle/api/v1/table-model-results?ocr_version=5&profile=baseline", "single", None),
+    ("image-classifications", "POST", "/paddle/api/v1/image-classifications", "single", {"labels": '["a document"]'}),
+    ("image-verifications", "POST", "/paddle/api/v1/image-verifications", "single", {"image_category": "qr_code"}),
 ]
 
 LEGACY_PATTERNS = {

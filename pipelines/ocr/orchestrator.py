@@ -40,7 +40,7 @@ def predict_remote_ocr(
 
     detection_data = client.infer(
         detector_url,
-        "/api/v1/text-detections",
+        "/paddle/api/v1/text-detections",
         [image_path],
         fields=detection_fields,
         request_id=request_id,
@@ -80,7 +80,7 @@ def predict_remote_ocr(
             for batch in chunked_paths(crop_paths, recognition_batch_size):
                 recognition_data = client.infer(
                     recognizer_url,
-                    "/api/v1/text-recognition-batches",
+                    "/paddle/api/v1/text-recognition-batches",
                     batch,
                     fields=recognition_fields,
                     request_id=request_id,

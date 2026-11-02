@@ -47,7 +47,7 @@ def test_layout_timing_and_old_upstream_filter(monkeypatch):
     result = orchestrator.analyze_document_layout(
         Path("test.png"), layout_url="layout", detector_url="det", request_id="req_test",
         client=client, expand_text_rois=False, auto_roi_mode="layout", padding=(0, 0, 0, 0))
-    assert client.calls == ["/api/v1/layout-predictions", "/api/v1/text-detections"]
+    assert client.calls == ["/paddle/api/v1/layout-predictions", "/paddle/api/v1/text-detections"]
     assert result["timing"] == {"layout_ms": 200.0, "text_detection_ms": 300.0,
         "model_calls_ms": 500.0, "postprocess_ms": 100.0, "pipeline_ms": 700.0}
     assert result["regions"] == []

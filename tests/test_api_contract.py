@@ -21,7 +21,7 @@ def _png_data_url() -> str:
 def _test_app():
     app = create_app("Contract test", "fake", service_name="contract-test")
 
-    @app.post("/api/v1/images")
+    @app.post("/paddle/api/v1/images")
     async def images(request: Request):
         image = await parse_image_request(request)
         try:
@@ -37,7 +37,7 @@ def test_json_base64_success_contract(monkeypatch):
     client = TestClient(_test_app())
 
     response = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         json={"image": _png_data_url()},
         headers={"X-Request-ID": "req_test123"},
     )
@@ -54,7 +54,7 @@ def test_multipart_image_success(monkeypatch):
     raw = base64.b64decode(_png_data_url().split(",", 1)[1])
 
     response = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         files={"image": ("sample.png", raw, "image/png")},
     )
 
@@ -66,7 +66,7 @@ def test_invalid_base64_has_debuggable_error(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "10")
     client = TestClient(_test_app())
 
-    response = client.post("/api/v1/images", json={"image": "not-base64!"})
+    response = client.post("/paddle/api/v1/images", json={"image": "not-base64!"})
 
     assert response.status_code == 422
     error = response.json()["error"]
@@ -80,8 +80,8 @@ def test_rate_limit_returns_429_and_headers(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
     client = TestClient(_test_app())
 
-    assert client.post("/api/v1/images", json={"image": _png_data_url()}).status_code == 200
-    response = client.post("/api/v1/images", json={"image": _png_data_url()})
+    assert client.post("/paddle/api/v1/images", json={"image": _png_data_url()}).status_code == 200
+    response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
 
     assert response.status_code == 429
     assert response.json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
@@ -96,26 +96,26 @@ def test_protected_service_accepts_bearer_and_api_key_headers(monkeypatch):
     monkeypatch.setenv("INTERNAL_API_TOKEN_PREVIOUS", previous_token)
     client = TestClient(_test_app())
 
-    unauthenticated = client.post("/api/v1/images", json={"image": _png_data_url()})
+    unauthenticated = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
     assert unauthenticated.status_code == 401
     assert unauthenticated.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
 
     bearer = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         json={"image": _png_data_url()},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert bearer.status_code == 200
 
     api_key = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         json={"image": _png_data_url()},
         headers={"X-API-Key": token},
     )
     assert api_key.status_code == 200
 
     rotating = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         json={"image": _png_data_url()},
         headers={"Authorization": f"Bearer {previous_token}"},
     )
@@ -138,7 +138,7 @@ def test_request_size_is_rejected_before_image_processing(monkeypatch):
     client = TestClient(_test_app())
 
     response = client.post(
-        "/api/v1/images",
+        "/paddle/api/v1/images",
         content=b"{}",
         headers={"Content-Type": "application/json", "Content-Length": str(2 * 1024 * 1024)},
     )
@@ -151,7 +151,7 @@ def test_image_pixel_limit_is_enforced(monkeypatch):
     monkeypatch.setenv("MAX_IMAGE_PIXELS", "8")
     client = TestClient(_test_app())
 
-    response = client.post("/api/v1/images", json={"image": _png_data_url()})
+    response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "IMAGE_DIMENSIONS_TOO_LARGE"
@@ -161,7 +161,7 @@ def test_public_api_redacts_internal_error_details(monkeypatch):
     monkeypatch.delenv("DEBUG_ERRORS", raising=False)
     app = create_app("Public test", "fake", service_name="public-test", public_api=True)
 
-    @app.get("/api/v1/failure")
+    @app.get("/paddle/api/v1/failure")
     def failure():
         raise ModelAPIError(
             503,
@@ -170,7 +170,7 @@ def test_public_api_redacts_internal_error_details(monkeypatch):
             details=[{"upstream": "http://127.0.0.1:8003", "reason": "private path", "upstream_code": "DOWN"}],
         )
 
-    response = TestClient(app).get("/api/v1/failure")
+    response = TestClient(app).get("/paddle/api/v1/failure")
 
     assert response.status_code == 503
     detail = response.json()["error"]["details"][0]
@@ -182,7 +182,7 @@ def test_public_api_redacts_internal_error_details(monkeypatch):
 def test_success_response_has_security_headers(monkeypatch):
     client = TestClient(_test_app())
 
-    response = client.post("/api/v1/images", json={"image": _png_data_url()})
+    response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
 
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["X-Content-Type-Options"] == "nosniff"

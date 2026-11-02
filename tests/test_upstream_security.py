@@ -27,7 +27,7 @@ def test_internal_token_is_sent_to_model_service(monkeypatch, tmp_path: Path):
         return _Response()
 
     monkeypatch.setattr("shared.upstream.requests.post", post)
-    post_images("http://model", "/api/v1/predict", [image], request_id="req_test")
+    post_images("http://model", "/paddle/api/v1/predict", [image], request_id="req_test")
 
     assert captured["Authorization"] == f"Bearer {token}"
     assert captured["X-Request-ID"] == "req_test"

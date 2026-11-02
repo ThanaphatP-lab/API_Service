@@ -20,7 +20,7 @@ def test_access_log_copied_to_debug_once(tmp_path, monkeypatch):
         configure_access_logging()
         logs["uvicorn.access"].info('%s - "%s %s HTTP/%s" %d',
             "127.0.0.1:60404", "POST",
-            "/api/v1/text-recognition-batches?version=6&model=thai_ft_v1", "1.1", 200)
+            "/paddle/api/v1/text-recognition-batches?version=6&model=thai_ft_v1", "1.1", 200)
         content = (tmp_path / "debug.log").read_text(encoding="utf-8")
         assert content.count("127.0.0.1:60404") == 1
         assert "version=6&model=thai_ft_v1" in content

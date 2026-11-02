@@ -7,7 +7,7 @@ from shared.contracts import API_VERSION
 from core.settings import _is_production
 
 
-_AUTH_EXEMPT_PATHS = {"/health", f"/api/{API_VERSION}/health"}
+_AUTH_EXEMPT_PATHS = {"/health", f"/paddle/api/{API_VERSION}/health"}
 
 
 def _valid_configured_token(variable: str, token: str) -> None:

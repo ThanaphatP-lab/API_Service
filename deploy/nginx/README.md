@@ -16,7 +16,7 @@ sudo nginx -t -c /absolute/path/to/nginx.conf
 sudo systemctl reload nginx
 ```
 
-The public URL becomes `https://api.example.com/api/v1/...`. Port `8080` must
+The public URL becomes `https://api.example.com/paddle/api/v1/...`. Port `8080` must
 not be opened by the host firewall when Nginx is used on the same server.
 
 The 28 MB edge body limit allows a 20 MB image encoded as Base64. Keep it in

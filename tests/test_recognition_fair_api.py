@@ -62,12 +62,12 @@ def test_concurrent_http_batches_preserve_selection_order_and_schema(monkeypatch
         async with service.lifespan(service.app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=service.app), base_url="http://test") as client:
                 data = encoded_image()
-                a = asyncio.create_task(client.post("/api/v1/text-recognition-batches?version=5", json={"images": [data]*100}))
+                a = asyncio.create_task(client.post("/paddle/api/v1/text-recognition-batches?version=5", json={"images": [data]*100}))
                 try:
                     assert await asyncio.to_thread(started.wait, 3)
                     # The event loop remains responsive while native inference blocks.
                     assert (await asyncio.wait_for(client.get("/health"), 1)).status_code == 200
-                    b = asyncio.create_task(client.post("/api/v1/text-recognition-batches?version=6", json={"images": [data]*60}))
+                    b = asyncio.create_task(client.post("/paddle/api/v1/text-recognition-batches?version=6", json={"images": [data]*60}))
                     async def admitted():
                         while len(service.app.state.rec_queue._jobs) < 2:
                             await asyncio.sleep(0.001)
@@ -103,10 +103,10 @@ def test_single_and_readiness_use_same_worker(monkeypatch):
     async def scenario():
         async with service.lifespan(service.app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=service.app), base_url="http://test") as client:
-                response = await client.post("/api/v1/text-recognitions", json={"image": encoded_image()})
+                response = await client.post("/paddle/api/v1/text-recognitions", json={"image": encoded_image()})
                 assert response.status_code == 200
                 assert response.json()["data"]["rec_text"] == "single"
-                assert (await client.get("/api/v1/readiness")).status_code == 200
+                assert (await client.get("/paddle/api/v1/readiness")).status_code == 200
     asyncio.run(scenario())
     assert len(threads) == 2 and len(set(threads)) == 1
     assert threads[0] != threading.get_ident()

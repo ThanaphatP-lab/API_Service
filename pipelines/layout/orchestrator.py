@@ -55,14 +55,14 @@ def analyze_document_layout(
     calls_started = time.perf_counter()
     layout_data = (client if client is not None else HTTPModelClient()).infer(
         layout_url,
-        "/api/v1/layout-predictions",
+        "/paddle/api/v1/layout-predictions",
         [image_path],
         request_id=request_id,
     )
     layout_finished = time.perf_counter()
     detection_data = (client if client is not None else HTTPModelClient()).infer(
         detector_url,
-        "/api/v1/text-detections",
+        "/paddle/api/v1/text-detections",
         [image_path],
         request_id=request_id,
     )
