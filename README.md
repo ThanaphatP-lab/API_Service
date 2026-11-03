@@ -5,7 +5,7 @@
 1. **Gateway** เป็น public API URL เดียวที่พอร์ต `8080`
 2. **Pipeline services** ต่อผลจากหลายโมเดลและเก็บ business logic
 3. **Leaf model services** ทำ inference เพียงโมเดลเดียวและ scale แยกกันได้
-
+[Pre-model](https://drive.google.com/drive/folders/1sWC2puDp8thmsXNOL-5Qkdptrha_L0fm?usp=sharing)
 แนวทาง response, URI naming และ versioning อ้างอิง [API Design Checklist ของ BorntoDev](https://www.borntodev.com/2026/05/13/api-design-checklist/)
 
 ```text
