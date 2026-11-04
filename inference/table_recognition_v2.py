@@ -119,7 +119,15 @@ def infer(image_path: str, selection: OCRModelPairSpec) -> dict[str, Any]:
             str(spec.model_dir) if spec.model_dir is not None else "<official-model-cache>",
             spec.model_dir is not None,
         )
-    payload = adapt_table(get_model(selection).predict(image_path))
+    payload = adapt_table(
+        get_model(selection).predict(
+            image_path,
+            use_ocr_model=True,
+            use_ocr_results_with_table_cells=True,
+            use_wired_table_cells_trans_to_html=True,
+            use_wireless_table_cells_trans_to_html=True,
+        )
+    )
     payload["model_selection"] = selection.public_dict()
     return payload
 
