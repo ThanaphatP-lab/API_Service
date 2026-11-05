@@ -33,6 +33,8 @@ async def predict(
     profile: str | None = None,
     det_model: str | None = None,
     rec_model: str | None = None,
+    det_version: str | None = None,
+    rec_version: str | None = None,
 ) -> dict[str, Any]:
     image = await parse_image_request(request)
     try:
@@ -64,6 +66,8 @@ async def predict(
                 if selected_recognition_model is not None
                 else None
             ),
+            detection_version=det_version or image.fields.get("det_version"),
+            recognition_version=rec_version or image.fields.get("rec_version"),
         )
         logger.debug(
             "TableV2 request selection version=%s variant=%s det_dir=%s rec_dir=%s",

@@ -172,24 +172,7 @@ def _request_paddle_selection(request: Request, fields: dict[str, Any]) -> dict[
 
 
 def _request_table_v2_selection(request: Request, fields: dict[str, Any]) -> dict[str, str]:
-    selected_version = _field_value(
-        request,
-        fields,
-        "ocr_version",
-        _field_value(request, fields, "version"),
-    )
-    selected_profile = _field_value(
-        request,
-        fields,
-        "profile",
-        _field_value(request, fields, "model", "baseline"),
-    )
-    return _table_v2_selection_fields(
-        selected_version,
-        selected_profile,
-        _field_value(request, fields, "det_model"),
-        _field_value(request, fields, "rec_model"),
-    )
+    return _request_paddle_selection(request, fields)
 
 
 async def _probe_pipeline(name: str, url: str, *, current_request_id: str, timeout: float) -> dict[str, Any]:
@@ -542,30 +525,18 @@ async def table_model_results(
     profile: str | None = None,
     det_model: str | None = None,
     rec_model: str | None = None,
+    det_version: str | None = None,
+    rec_version: str | None = None,
 ) -> dict[str, Any]:
     """Expose the notebook-compatible integrated TableRecognitionPipelineV2 output."""
-    selection_keys = {"version", "model", "ocr_version", "profile", "det_model", "rec_model"}
+    selection_keys = {"version", "model", "ocr_version", "profile", "det_model", "rec_model", "det_version", "rec_version"}
     query_selects_model = bool(selection_keys.intersection(request.query_params))
-    selection = None
-    if query_selects_model:
-        selected_version = ocr_version or version
-        selected_model = profile or model or "baseline"
-        selection = _table_v2_selection_fields(
-            selected_version,
-            selected_model,
-            det_model,
-            rec_model,
-        )
     return await _forward(
         request,
         upstream=TABLE_MODEL_URL,
         endpoint="/paddle/api/v1/table-model-results",
-        extra_fields=selection,
-        field_resolver=(
-            None
-            if query_selects_model
-            else lambda fields: _request_table_v2_selection(request, fields)
-        ),
+        extra_fields=_request_table_v2_selection(request, {}) if query_selects_model else None,
+        field_resolver=None if query_selects_model else lambda fields: _request_table_v2_selection(request, fields),
     )
 
 

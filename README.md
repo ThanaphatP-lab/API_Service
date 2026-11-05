@@ -611,6 +611,11 @@ is empty. Loaded model instances are cached by `(version, model)` and reused.
 
 ### TableRecognitionPipelineV2 OCR variants
 
+Table V2 accepts separate OCR model generations and variants, for example:
+`POST /paddle/api/v1/table-model-results?det_version=6&rec_version=5&det_model=baseline&rec_model=thai_ft_v1`.
+`ocr_version` (or `version`) remains the shared default when a component version is omitted.
+The selected recognition and detection variants must exist for their respective versions.
+
 TableV2 resolves its internal text detector and recognizer from the same
 `model_variants.json` catalog as the standalone leaf services. The clearer
 parameter names are `ocr_version` and `profile`; `version` and `model` remain

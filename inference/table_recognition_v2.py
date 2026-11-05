@@ -32,6 +32,8 @@ def selection_from_settings(
     *,
     detection_model: str | None = None,
     recognition_model: str | None = None,
+    detection_version: str | None = None,
+    recognition_version: str | None = None,
 ) -> OCRModelPairSpec:
     return resolve_ocr_model_pair(
         version,
@@ -39,6 +41,8 @@ def selection_from_settings(
         default_version=os.getenv("TABLE_V2_OCR_VERSION", "v5"),
         detection_variant=detection_model,
         recognition_variant=recognition_model,
+        detection_version=detection_version,
+        recognition_version=recognition_version,
     )
 
 
@@ -56,13 +60,13 @@ def get_model(selection: OCRModelPairSpec) -> TableRecognitionPipelineV2:
 
     # Baseline-only environment overrides remain backward compatible. A
     # fine-tuned selection always comes from the central model catalog.
-    if detection.variant == "baseline" and selection.version == configured_default_version:
+    if detection.variant == "baseline" and detection.version == configured_default_version:
         detection_model_name = os.getenv(
             "TABLE_V2_TEXT_DETECTION_MODEL_NAME",
             detection_model_name,
         )
         detection_model_dir = model_dir("TABLE_V2_TEXT_DETECTION_MODEL_DIR") or detection_model_dir
-    if recognition.variant == "baseline" and selection.version == configured_default_version:
+    if recognition.variant == "baseline" and recognition.version == configured_default_version:
         recognition_model_name = os.getenv(
             "TABLE_V2_TEXT_RECOGNITION_MODEL_NAME",
             recognition_model_name,
@@ -142,6 +146,8 @@ def get_table_v2(
     *,
     detection_model: str | None = None,
     recognition_model: str | None = None,
+    detection_version: str | None = None,
+    recognition_version: str | None = None,
 ) -> TableRecognitionPipelineV2:
     return get_model(
         selection_from_settings(
@@ -149,6 +155,8 @@ def get_table_v2(
             model,
             detection_model=detection_model,
             recognition_model=recognition_model,
+            detection_version=detection_version,
+            recognition_version=recognition_version,
         )
     )
 
@@ -160,6 +168,8 @@ def infer_table_v2(
     *,
     detection_model: str | None = None,
     recognition_model: str | None = None,
+    detection_version: str | None = None,
+    recognition_version: str | None = None,
 ) -> dict[str, Any]:
     return infer(
         image_path,
@@ -168,5 +178,7 @@ def infer_table_v2(
             model,
             detection_model=detection_model,
             recognition_model=recognition_model,
+            detection_version=detection_version,
+            recognition_version=recognition_version,
         ),
     )
