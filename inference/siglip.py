@@ -85,20 +85,11 @@ def infer(
 
 
 def _result(raw_logits, probabilities, candidates, selected_device):
-    predictions = [
-        {"label": label, "score": score, "logit": logit}
-        for label, score, logit in sorted(
-            zip(candidates, probabilities, raw_logits),
-            key=lambda item: item[2],
-            reverse=True,
-        )
-    ]
     payload = adapt_siglip(
         logits=raw_logits,
         categories=candidates,
         device=selected_device,
     )
-    payload["predictions"] = predictions
     return payload
 
 

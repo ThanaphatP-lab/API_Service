@@ -80,8 +80,8 @@ def test_concurrent_http_batches_preserve_selection_order_and_schema(monkeypatch
                     body = response.json()["data"]
                     assert body["count"] == count
                     assert body["model_selection"]["version"] == version
-                    assert body["predictions"] == body["results"] == body["result"]["results"]
-                    assert [item["rec_text"] for item in body["results"]] == [f"{version}-{i}" for i in range(count)]
+                    assert not {"predictions", "result"} & body.keys()
+                    assert [item["rec_text"] for item in body["raw_output"]] == [f"{version}-{i}" for i in range(count)]
                     assert len(body["raw_output"]) == count
     asyncio.run(scenario())
     assert [(version, count) for version, count, _ in calls] == [
@@ -105,7 +105,7 @@ def test_single_and_readiness_use_same_worker(monkeypatch):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=service.app), base_url="http://test") as client:
                 response = await client.post("/paddle/api/v1/text-recognitions", json={"image": encoded_image()})
                 assert response.status_code == 200
-                assert response.json()["data"]["rec_text"] == "single"
+                assert response.json()["data"]["raw_output"][0]["rec_text"] == "single"
                 assert (await client.get("/paddle/api/v1/readiness")).status_code == 200
     asyncio.run(scenario())
     assert len(threads) == 2 and len(set(threads)) == 1

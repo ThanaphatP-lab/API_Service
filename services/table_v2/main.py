@@ -15,6 +15,7 @@ from core.readiness import add_readiness_route
 from core.app_factory import create_app
 from core.errors import run_image_inference
 from shared.contracts import success_response
+from shared.compact_response import compact_response, requested_format
 
 
 MODEL_NAME = "TableRecognitionPipelineV2"
@@ -90,7 +91,7 @@ async def predict(
         )
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, image.fields)),
             service=SERVICE_NAME,
             model=f"{MODEL_NAME}:{selection.variant}",
             model_version=selection.version,

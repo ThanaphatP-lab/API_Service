@@ -7,7 +7,7 @@ from shared.serialization import prediction_list, to_jsonable
 
 
 CONTRACT_VERSION = "leaf-inference-v1"
-_IMAGE_FIELDS = frozenset({"input_img"})
+_IMAGE_FIELDS = frozenset({"input_img", "output_img"})
 
 
 def first_not_none(*values: Any) -> Any:
@@ -34,17 +34,19 @@ def mapping(value: Any) -> dict[str, Any]:
     return dict(nested) if isinstance(nested, Mapping) else result
 
 
-def _base(kind: str, result: dict[str, Any], raw: list[Any]) -> dict[str, Any]:
+def _base(kind: str) -> dict[str, Any]:
     return {
         "contract_version": CONTRACT_VERSION,
         "kind": kind,
-        "result": result,
-        "raw_output": raw,
     }
 
 
 def adapt_layout(output: Any) -> dict[str, Any]:
     raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
+    return {**_base("layout"), "raw_output": raw}
+
+
+def layout_detections(raw: list[Any]) -> list[dict[str, Any]]:
     detections: list[dict[str, Any]] = []
     for obj in raw:
         item = mapping(obj)
@@ -79,8 +81,7 @@ def adapt_layout(output: Any) -> dict[str, Any]:
                         "polygon_points": to_jsonable(item.get("polygon_points")),
                     }
                 )
-    result = {"detections": detections}
-    return {**_base("layout", result, raw), **result, "predictions": raw}
+    return detections
 
 
 def _text_detection_result(raw: list[Any]) -> dict[str, Any]:
@@ -107,26 +108,14 @@ def _text_detection_result(raw: list[Any]) -> dict[str, Any]:
 
 def adapt_text_detection(output: Any) -> dict[str, Any]:
     raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
-    result = _text_detection_result(raw)
-    # predictions remains compatible with the existing composition pipelines.
-    compatibility = [result]
-    return {**_base("text_detection", result, raw), **result, "predictions": compatibility}
+    return {**_base("text_detection"), "raw_output": raw}
 
 
 def adapt_text_detection_batch(output: Any, expected_count: int | None = None) -> dict[str, Any]:
     raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
-    results = [_text_detection_result([value]) for value in raw]
     if expected_count is not None:
-        while len(results) < expected_count:
-            results.append({"dt_polys": [], "dt_scores": []})
-        results = results[:expected_count]
-    result = {"results": results}
-    return {
-        **_base("text_detection_batch", result, raw),
-        **result,
-        "predictions": results,
-        "count": len(results),
-    }
+        raw = (raw + [{}] * max(0, expected_count - len(raw)))[:expected_count]
+    return {**_base("text_detection_batch"), "raw_output": raw, "count": len(raw)}
 
 
 def recognition_result(value: Any) -> dict[str, Any]:
@@ -137,32 +126,25 @@ def recognition_result(value: Any) -> dict[str, Any]:
 
 
 def adapt_text_recognition(output: Any) -> dict[str, Any]:
-    raw = prediction_list(output)
-    result = recognition_result(raw[0]) if raw else {"rec_text": "", "rec_score": None}
-    return {**_base("text_recognition", result, raw), **result, "predictions": [result]}
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
+    return {**_base("text_recognition"), "raw_output": raw}
 
 
 def adapt_text_recognition_batch(output: Any, expected_count: int | None = None) -> dict[str, Any]:
-    raw = prediction_list(output)
-    results = [recognition_result(value) for value in raw]
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
     if expected_count is not None:
-        while len(results) < expected_count:
-            results.append({"rec_text": "", "rec_score": None})
-        results = results[:expected_count]
-    result = {"results": results}
-    return {**_base("text_recognition_batch", result, raw), **result, "predictions": results, "count": len(results)}
+        raw = (raw + [{}] * max(0, expected_count - len(raw)))[:expected_count]
+    return {**_base("text_recognition_batch"), "raw_output": raw, "count": len(raw)}
 
 
 def adapt_table(output: Any) -> dict[str, Any]:
-    raw = prediction_list(output)
-    result = {"raw_output": raw}
-    return {**_base("table_recognition_pipeline_v2", result, raw), "predictions": raw}
+    raw = prediction_list(output, exclude_keys=_IMAGE_FIELDS)
+    return {**_base("table_recognition_pipeline_v2"), "raw_output": raw}
 
 
 def adapt_table_structure(output: Any) -> dict[str, Any]:
     raw = prediction_list(output)
-    result = {"raw_output": raw}
-    return {**_base("table_structure", result, raw), "predictions": raw}
+    return {**_base("table_structure"), "raw_output": raw}
 
 
 def adapt_siglip(*, logits: Any, categories: list[str], device: str) -> dict[str, Any]:
@@ -170,6 +152,5 @@ def adapt_siglip(*, logits: Any, categories: list[str], device: str) -> dict[str
     if isinstance(values, list) and len(values) == 1 and isinstance(values[0], list):
         values = values[0]
     values = values if isinstance(values, list) else []
-    result = {"logits": values, "categories": list(categories)}
-    raw = [{"logits_per_image": values}]
-    return {**_base("siglip", result, raw), **result, "device": device}
+    return {**_base("siglip"), "raw_output": [{"logits_per_image": values}],
+            "categories": list(categories), "device": device}

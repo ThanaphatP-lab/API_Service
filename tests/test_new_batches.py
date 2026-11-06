@@ -30,7 +30,7 @@ def test_layout_batches_preserve_pages_and_filter_images(monkeypatch):
     assert calls[0]["batch_size"] == 2
     assert result["count"] == 2
     assert [r["raw_output"][0]["page"] for r in result["results"]] == [0, 1]
-    assert all("input_img" not in r["raw_output"][0] for r in result["results"])
+    assert all("input_img" not in str(r) for r in result["results"])
     with pytest.raises(RuntimeError):
         module.infer_batch(["a"], module.LayoutSelection("fake", None, "cpu"))
 
@@ -63,7 +63,7 @@ def test_siglip_real_batch_shape_and_chunking(monkeypatch):
     result = module.infer_batch(["a", "b", "c"], ["text", "image"], module.SiglipSelection("fake", None, "cpu"))
     assert calls == [2, 1]
     assert result["count"] == 3
-    assert [r["logits"][0] for r in result["results"]] == [0, 1, 2]
+    assert [r["raw_output"][0]["logits_per_image"][0] for r in result["results"]] == [0, 1, 2]
     assert all(image.closed for image in images)
 
 

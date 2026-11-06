@@ -41,6 +41,21 @@ Client → Gateway :8080
 
 Swagger UI: `http://localhost:8080/docs`
 
+REC, text detection, TableV2 and layout inference support `response_format=compact`
+as a query parameter or request field. Compact responses retain the useful results,
+count for batches, and model selection where available. TableV2 returns `tables`
+with `pred_html`, `cell_box_list`, `table_ocr_pred`, and `table_region_id` when
+present. Legacy detection retains `regions` without `raw_predictions`. For example,
+use `/paddle/api/v1/text-recognition-batches?response_format=compact`.
+Without this option, leaf model results are returned once in `data.raw_output`.
+Batch responses include `count`; layout batch responses contain one leaf payload
+per image in `results`. This changes the leaf response contract by removing the
+duplicate `result` and `predictions` aliases.
+All four services
+exclude `input_img` and `output_img` recursively from raw model output before JSON
+conversion, including in the default response. Existing clients that read removed
+fields must migrate to `raw_output` or request the compact format.
+
 Runtime notes:
 
 - Table `auto` uses grid evidence to call wired or wireless first. It calls the alternate model only when the first result is empty or below the original `0.72` quality threshold; the single OCR result is reused.

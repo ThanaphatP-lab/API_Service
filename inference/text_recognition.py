@@ -7,7 +7,7 @@ from typing import Any
 from paddleocr import TextRecognition
 
 from core.cache import singleflight_lru_cache
-from shared.inference_adapters import adapt_text_recognition, adapt_text_recognition_batch
+from shared.inference_adapters import adapt_text_recognition, adapt_text_recognition_batch, recognition_result
 from shared.model_variants import ModelVariantSpec, resolve_model_variant
 from shared.settings import device
 
@@ -110,7 +110,9 @@ def predict_recognition(
     version: str | None = None,
     model: str = "baseline",
 ) -> list[dict[str, Any]]:
-    return infer_recognition(image_path, version, model)["predictions"]
+    payload = infer_recognition(image_path, version, model)
+    raw = payload["raw_output"]
+    return [recognition_result(raw[0] if raw else {})]
 
 
 def predict_recognition_batch(
@@ -118,4 +120,4 @@ def predict_recognition_batch(
     version: str | None = None,
     model: str = "baseline",
 ) -> list[dict[str, Any]]:
-    return infer_recognition_batch(image_paths, version, model)["predictions"]
+    return [recognition_result(item) for item in infer_recognition_batch(image_paths, version, model)["raw_output"]]

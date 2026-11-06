@@ -45,7 +45,8 @@ def predict_remote_ocr(
         fields=detection_fields,
         request_id=request_id,
     )
-    detections = detection_data.get("predictions") or []
+    detections = detection_data.get("raw_output", [detection_data] if "dt_polys" in detection_data
+                                    else detection_data.get("predictions") or [])
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError("OpenCV could not decode the uploaded image")
@@ -86,7 +87,7 @@ def predict_remote_ocr(
                     request_id=request_id,
                     multiple=True,
                 )
-                batch_predictions = recognition_data.get("predictions") or []
+                batch_predictions = recognition_data.get("raw_output", recognition_data.get("results", recognition_data.get("predictions"))) or []
                 if isinstance(batch_predictions, list):
                     recognition_predictions.extend(batch_predictions)
                 current_selection = recognition_data.get("model_selection")

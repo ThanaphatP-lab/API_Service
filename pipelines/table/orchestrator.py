@@ -81,7 +81,7 @@ async def recognize_table(
                 )
                 structure_inference_calls += 1
                 structure_images += len(crop_paths)
-                predictions = batch.get("predictions") if isinstance(batch.get("predictions"), list) else []
+                predictions = batch.get("raw_output", batch.get("predictions")) or []
                 semi_result = assemble_semi_table_result(
                     mode=mode,
                     model_name=initial_model,

@@ -6,7 +6,7 @@ from typing import Any
 from paddleocr import TextDetection
 
 from core.cache import singleflight_lru_cache
-from shared.inference_adapters import adapt_text_detection, adapt_text_detection_batch
+from shared.inference_adapters import adapt_text_detection, adapt_text_detection_batch, _text_detection_result
 from shared.model_variants import ModelVariantSpec, resolve_model_variant
 from shared.settings import device
 
@@ -88,7 +88,8 @@ def predict_detection(
     version: str | None = None,
     model: str = "baseline",
 ) -> list[dict[str, Any]]:
-    return infer_detection(image_path, version, model)["predictions"]
+    payload = infer_detection(image_path, version, model)
+    return [_text_detection_result(payload["raw_output"])]
 
 
 def predict_detection_batch(
@@ -96,4 +97,4 @@ def predict_detection_batch(
     version: str | None = None,
     model: str = "baseline",
 ) -> list[dict[str, Any]]:
-    return infer_detection_batch(image_paths, version, model)["predictions"]
+    return [_text_detection_result([item]) for item in infer_detection_batch(image_paths, version, model)["raw_output"]]

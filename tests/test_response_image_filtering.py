@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from shared.inference_adapters import adapt_layout, adapt_text_detection, adapt_text_detection_batch
+from shared.inference_adapters import (adapt_layout, adapt_text_detection, adapt_text_detection_batch,
+    adapt_text_recognition, adapt_text_recognition_batch, adapt_table)
 from shared.serialization import to_jsonable
 
 
@@ -10,16 +11,17 @@ class UnserializableImage(np.ndarray):
         raise AssertionError("Image pixels must not be converted")
 
 
-@pytest.mark.parametrize("adapter", [adapt_layout, adapt_text_detection, adapt_text_detection_batch])
+@pytest.mark.parametrize("adapter", [adapt_layout, adapt_text_detection, adapt_text_detection_batch,
+    adapt_text_recognition, adapt_text_recognition_batch, adapt_table])
 def test_filter_before_conversion_preserves_wrappers_and_input(adapter):
     image = np.zeros((2, 2, 3)).view(UnserializableImage)
-    nested = {"input_img": image, "dt_polys": [[[0, 0], [1, 1]]], "dt_scores": [0.9], "boxes": []}
+    nested = {"input_img": image, "output_img": image, "dt_polys": [[[0, 0], [1, 1]]], "dt_scores": [0.9], "boxes": []}
     source = {"input_img": image, "res": nested, "page_index": 3}
     output = adapter([source])
-    raw = output["raw_output"][0]
-    assert "input_img" not in raw and "input_img" not in raw["res"]
-    assert raw["page_index"] == 3
-    assert raw["res"]["dt_polys"] == nested["dt_polys"]
+    assert "input_img" not in str(output) and "output_img" not in str(output)
+    if adapter is adapt_table:
+        assert output["raw_output"][0]["page_index"] == 3
+        assert output["raw_output"][0]["res"]["dt_polys"] == nested["dt_polys"]
     assert source["input_img"] is image and nested["input_img"] is image
 
 

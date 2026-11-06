@@ -67,9 +67,11 @@ def analyze_document_layout(
         request_id=request_id,
     )
     calls_finished = time.perf_counter()
-    layouts = _layout_regions(layout_data.get("predictions") or [], width, height)
+    layout_predictions = layout_data.get("raw_output", [layout_data] if "detections" in layout_data else layout_data.get("predictions") or [])
+    detection_predictions = detection_data.get("raw_output", [detection_data] if "dt_polys" in detection_data else detection_data.get("predictions") or [])
+    layouts = _layout_regions(layout_predictions, width, height)
     text_lines = _text_regions(
-        detection_data.get("predictions") or [],
+        detection_predictions,
         width,
         height,
         expand=False,
@@ -130,8 +132,8 @@ def analyze_document_layout(
     # Also protect callers connected to older upstream services. Preserve raw
     # wrappers and metadata; remove only image pixels, without mutating inputs.
     raw = to_jsonable({
-        "layout": layout_data.get("predictions") or [],
-        "detection": detection_data.get("predictions") or [],
+        "layout": layout_predictions,
+        "detection": detection_predictions,
     }, exclude_keys=frozenset({"input_img"}))
     finished = time.perf_counter()
     return {

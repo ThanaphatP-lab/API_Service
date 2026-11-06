@@ -13,6 +13,7 @@ from core.settings import RecognitionQueueSettings
 from core.app_factory import create_app
 from core.errors import run_image_inference
 from shared.contracts import ModelAPIError, request_id, success_response
+from shared.compact_response import compact_response, requested_format
 from shared.model_variants import resolve_model_variant
 
 MODEL_NAME = os.getenv("REC_MODEL_NAME", "th_PP-OCRv5_mobile_rec")
@@ -59,10 +60,8 @@ async def queued_inference(request, images, selected, *, multiple):
                                 label=request_id(request))
     if not multiple or len(chunks) == 1:
         return chunks[0]
-    results = [item for chunk in chunks for item in chunk["results"]]
-    return {**chunks[0], "result": {"results": results}, "results": results,
-            "predictions": results, "count": len(results),
-            "raw_output": [item for chunk in chunks for item in chunk.get("raw_output", [])]}
+    results = [item for chunk in chunks for item in chunk["raw_output"]]
+    return {**chunks[0], "raw_output": results, "count": len(results)}
 
 
 @app.post("/paddle/api/v1/text-recognitions", tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
@@ -100,11 +99,11 @@ async def predict(
             response_selection.get("model_name"),
             str(selected.model_dir) if selected.model_dir is not None else "<official-model-cache>",
             selected.model_dir is not None,
-            len(payload.get("predictions") or []),
+            len(payload.get("raw_output") or []),
         )
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, image.fields)),
             service=SERVICE_NAME,
             model=selected.response_model,
             model_version=selected.version,
@@ -148,11 +147,11 @@ async def recognize_batch(
             str(selected.model_dir) if selected.model_dir is not None else "<official-model-cache>",
             selected.model_dir is not None,
             len(images.paths),
-            len(payload.get("results") or []),
+            len(payload.get("raw_output") or []),
         )
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, images.fields)),
             service=SERVICE_NAME,
             model=selected.response_model,
             model_version=selected.version,

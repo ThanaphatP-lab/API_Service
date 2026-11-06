@@ -53,7 +53,7 @@ def _layout_regions(predictions: list[dict[str, Any]], width: int, height: int) 
     regions: list[dict[str, Any]] = []
     for prediction in predictions:
         value = _payload(prediction)
-        boxes = value.get("boxes") or value.get("layout_boxes") or []
+        boxes = value.get("boxes") or value.get("layout_boxes") or value.get("detections") or []
         for box in boxes:
             if not isinstance(box, dict):
                 continue

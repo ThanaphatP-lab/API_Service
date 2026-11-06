@@ -11,6 +11,8 @@ from core.readiness import add_readiness_route
 from core.app_factory import create_app
 from core.errors import run_image_inference
 from shared.contracts import success_response
+from shared.compact_response import compact_response, requested_format
+from shared.inference_adapters import _text_detection_result
 from shared.model_variants import resolve_model_variant
 from pipelines.layout.contracts import format_legacy_detection
 
@@ -54,11 +56,11 @@ async def predict(
             response_selection.get("model_name"),
             str(selected.model_dir) if selected.model_dir is not None else "<official-model-cache>",
             selected.model_dir is not None,
-            len(payload.get("dt_polys") or []),
+            len(_text_detection_result(payload.get("raw_output") or []).get("dt_polys") or []),
         )
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, image.fields)),
             service=SERVICE_NAME,
             model=selected.response_model,
             model_version=selected.version,
@@ -93,7 +95,7 @@ async def predict_batch(
             images.paths[0],
         )
         response_selection = payload.get("model_selection", selected.public_dict())
-        results = payload.get("results") or []
+        results = [_text_detection_result([item]) for item in payload.get("raw_output") or []]
         if images.fields.get("response_contract") == "legacy-layout":
             payload = format_legacy_detection(payload, images.paths, multiple=True)
         region_count = sum(
@@ -115,7 +117,7 @@ async def predict_batch(
         )
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, images.fields)),
             service=SERVICE_NAME,
             model=selected.response_model,
             model_version=selected.version,

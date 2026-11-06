@@ -98,7 +98,15 @@ def verify_classification(
         )
     prompt_map = {item["prompt"]: item for item in categories}
     ranked = []
-    for prediction in classification.get("predictions") or []:
+    predictions = classification.get("predictions")
+    if predictions is None:
+        raw = classification.get("raw_output") or []
+        logits = raw[0].get("logits_per_image", []) if raw and isinstance(raw[0], dict) else []
+        predictions = [{"label": label, "logit": logit,
+                        "score": 1 / (1 + math.exp(-logit)) if logit >= 0
+                        else math.exp(logit) / (1 + math.exp(logit))}
+                       for label, logit in zip(classification.get("categories") or [], logits)]
+    for prediction in predictions:
         category = prompt_map.get(str(prediction.get("label")))
         if category:
             pair_score = float(prediction.get("score", 0.0))

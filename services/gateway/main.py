@@ -212,6 +212,8 @@ async def _forward(
     try:
         resolved_fields = field_resolver(image.fields) if field_resolver is not None else {}
         fields = {**image.fields, **resolved_fields, **(extra_fields or {})}
+        if "response_format" in request.query_params:
+            fields["response_format"] = request.query_params["response_format"]
         selected_upstream = upstream(fields) if callable(upstream) else upstream
         if endpoint == "/paddle/api/v1/text-detections":
             fields.pop("response_contract", None)
@@ -242,6 +244,8 @@ async def _forward_multiple(
     try:
         resolved_fields = field_resolver(images.fields) if field_resolver is not None else {}
         fields = {**images.fields, **resolved_fields, **(extra_fields or {})}
+        if "response_format" in request.query_params:
+            fields["response_format"] = request.query_params["response_format"]
         selected_upstream = upstream(fields) if callable(upstream) else upstream
         if endpoint == "/paddle/api/v1/text-detection-batches":
             fields.pop("response_contract", None)

@@ -50,7 +50,7 @@ def test_remote_ocr_chunks_recognition_and_forwards_model_selection(monkeypatch,
                 for _ in range(5)
             ]
             return {
-                "predictions": [{"dt_polys": polygons, "dt_scores": [0.9] * 5}],
+                "raw_output": [{"dt_polys": polygons, "dt_scores": [0.9] * 5}],
                 "model_selection": {
                     "version": "v6",
                     "variant": "thai_det",
@@ -64,7 +64,7 @@ def test_remote_ocr_chunks_recognition_and_forwards_model_selection(monkeypatch,
             counter["value"] += 1
             predictions.append({"rec_text": f"line-{index}", "rec_score": 0.8})
         return {
-            "predictions": predictions,
+            "raw_output": predictions,
             "model_selection": {
                 "version": "v6",
                 "variant": "thai_rec",

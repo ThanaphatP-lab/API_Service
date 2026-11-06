@@ -11,6 +11,7 @@ from core.readiness import add_readiness_route
 from core.app_factory import create_app
 from core.errors import run_image_inference
 from shared.contracts import success_response
+from shared.compact_response import compact_response, requested_format
 
 MODEL_NAME = os.getenv("LAYOUT_MODEL_NAME", "PP-DocLayoutV3")
 SERVICE_NAME = "leaf-layout"
@@ -26,7 +27,7 @@ async def predict(request: Request) -> dict[str, Any]:
         payload = run_image_inference(lambda path: infer(path, selection), image.path)
         return success_response(
             request,
-            payload,
+            compact_response(payload, requested_format(request, image.fields)),
             service=SERVICE_NAME,
             model=MODEL_NAME,
         )
@@ -41,7 +42,7 @@ async def predict_batch(request: Request) -> dict[str, Any]:
         selection = selection_from_settings()
         payload = run_image_inference(
             lambda _: infer_batch([str(p) for p in images.paths], selection), images.path)
-        return success_response(request, payload, service=SERVICE_NAME, model=MODEL_NAME)
+        return success_response(request, compact_response(payload, requested_format(request, images.fields)), service=SERVICE_NAME, model=MODEL_NAME)
     finally:
         images.cleanup()
 

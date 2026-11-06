@@ -14,6 +14,7 @@ from shared.inference_adapters import (
     adapt_text_recognition_batch,
 )
 from shared.serialization import to_jsonable
+from shared.compact_response import compact_response
 
 
 class FakePaddleResult:
@@ -46,7 +47,7 @@ def test_layout_adapter_matches_notebook_contract_and_preserves_raw_alias():
     )
 
     _assert_json(payload)
-    assert payload["result"] == {
+    assert compact_response(payload, "compact") == {
         "detections": [
             {
                 "bbox": [1, 2, 30, 40],
@@ -57,7 +58,8 @@ def test_layout_adapter_matches_notebook_contract_and_preserves_raw_alias():
             }
         ]
     }
-    assert payload["predictions"] == payload["raw_output"]
+    assert not {"result", "predictions"} & payload.keys()
+    assert "raw_output" in payload
 def test_text_detection_single_and_batch_keep_one_result_per_image():
     first = {"dt_polys": [[[1, 2], [3, 4]]], "dt_scores": [float("nan")]}
     second = {"dt_polys": [], "dt_scores": []}
@@ -67,11 +69,11 @@ def test_text_detection_single_and_batch_keep_one_result_per_image():
 
     _assert_json(single)
     _assert_json(batch)
-    assert single["result"] == {"dt_polys": [[[1, 2], [3, 4]]], "dt_scores": [None]}
-    assert batch["results"][0] == single["result"]
-    assert batch["results"][1] == {"dt_polys": [], "dt_scores": []}
-    assert batch["results"][2] == {"dt_polys": [], "dt_scores": []}
-    assert batch["predictions"] == batch["results"]
+    normalized = compact_response(batch, "compact")["results"]
+    assert normalized[0] == compact_response(single, "compact")
+    assert normalized[0]["dt_scores"] == [None]
+    assert normalized[1:] == [{"dt_polys": [], "dt_scores": []}] * 2
+    assert not {"result", "predictions"} & batch.keys()
     assert batch["count"] == 3
 
 
@@ -84,8 +86,8 @@ def test_recognition_adapters_match_notebook_contract():
 
     _assert_json(single)
     _assert_json(batch)
-    assert single["result"] == {"rec_text": "ทดสอบ", "rec_score": 0.75}
-    assert batch["results"] == [
+    assert compact_response(single, "compact") == {"rec_text": "ทดสอบ", "rec_score": 0.75}
+    assert compact_response(batch, "compact")["results"] == [
         {"rec_text": "A", "rec_score": 0.8},
         {"rec_text": "B", "rec_score": 0.7},
         {"rec_text": "", "rec_score": None},
@@ -101,10 +103,10 @@ def test_table_and_siglip_expose_notebook_result_without_business_logic():
     _assert_json(wired)
     _assert_json(siglip)
     assert table["kind"] == "table_recognition_pipeline_v2"
-    assert table["result"] == {"raw_output": table["raw_output"]}
+    assert table["raw_output"] == [{"table_res_list": [{"html": "<table></table>"}]}]
     assert wired["kind"] == "table_structure"
-    assert wired["result"] == {"raw_output": wired["raw_output"]}
-    assert siglip["result"] == {"logits": [1.2, -0.4], "categories": ["qr", "other"]}
+    assert wired["raw_output"] == [{"structure": ["<table>", "</table>"]}]
+    assert siglip["raw_output"] == [{"logits_per_image": [1.2, -0.4]}] and siglip["categories"] == ["qr", "other"]
     assert siglip["device"] == "cuda:0"
 
 

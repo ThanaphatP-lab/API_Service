@@ -8,7 +8,11 @@ def format_legacy_detection(payload, paths, *, multiple=False):
     import cv2
     from shared.contracts import ModelAPIError
 
-    predictions = payload.get("predictions") or []
+    predictions = payload.get("raw_output")
+    if predictions is None:
+        predictions = (payload.get("results", payload.get("predictions")) if multiple
+                       else ([payload] if "dt_polys" in payload else payload.get("predictions")))
+    predictions = predictions or []
     results = []
     for index, path in enumerate(paths):
         image = cv2.imread(str(path))
