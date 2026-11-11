@@ -274,6 +274,7 @@ def services(request: Request) -> dict[str, Any]:
         request,
         {
             "document_layouts": "/paddle/api/v1/document-layouts",
+            "layout": "/paddle/api/v1/layout-predictions"
             "document_layout_batches": "/paddle/api/v1/document-layout-batches",
             "layout_prediction_batches": "/paddle/api/v1/layout-prediction-batches",
             "image_classification_batches": "/paddle/api/v1/image-classification-batches",
