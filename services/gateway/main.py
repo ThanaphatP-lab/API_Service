@@ -274,7 +274,7 @@ def services(request: Request) -> dict[str, Any]:
         request,
         {
             "document_layouts": "/paddle/api/v1/document-layouts",
-            "layout": "/paddle/api/v1/layout-predictions"
+            "layout": "/paddle/api/v1/layout-predictions",
             "document_layout_batches": "/paddle/api/v1/document-layout-batches",
             "layout_prediction_batches": "/paddle/api/v1/layout-prediction-batches",
             "image_classification_batches": "/paddle/api/v1/image-classification-batches",
@@ -311,6 +311,10 @@ async def document_layouts(request: Request) -> dict[str, Any]:
         endpoint="/paddle/api/v1/document-layouts",
     )
 
+@app.post("/paddle/api/v1/layout-predictions", tags=["Public model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+async def layout_prediction(request: Request) -> dict[str, Any]:
+    return await _forward(request, upstream=LAYOUT_SERVICE_URL,
+                                   endpoint="/paddle/api/v1/layout-predictions")
 
 @app.post("/paddle/api/v1/document-layout-batches", tags=["Public pipelines"], openapi_extra=BATCH_IMAGE_REQUEST_OPENAPI)
 async def document_layout_batches(request: Request) -> dict[str, Any]:
