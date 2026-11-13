@@ -25,6 +25,7 @@ service_urls = ServiceURLs()
 TEXT_DETECTION_URL = service_urls.text_detection_url
 LAYOUT_PIPELINE_URL = service_urls.layout_pipeline_url
 REC_SERVICE_URL = service_urls.rec_service_url
+OCR_OPENTHAI_URL = service_urls.ocr_openthai_url
 OCR_CUSTOM_URL = service_urls.ocr_custom_url
 OCR_PADDLE_URL = service_urls.ocr_paddle_url
 TABLE_PIPELINE_URL = service_urls.table_pipeline_url
@@ -42,6 +43,7 @@ app = create_app(
 )
 
 UPSTREAMS = {
+    "openthai": OCR_OPENTHAI_URL,
     "layout": LAYOUT_PIPELINE_URL,
     "layout-model": LAYOUT_SERVICE_URL,
     "ocr-custom": OCR_CUSTOM_URL,
@@ -278,6 +280,7 @@ def services(request: Request) -> dict[str, Any]:
             "document_layout_batches": "/paddle/api/v1/document-layout-batches",
             "layout_prediction_batches": "/paddle/api/v1/layout-prediction-batches",
             "image_classification_batches": "/paddle/api/v1/image-classification-batches",
+            "openthai_text": "/paddle/api/v1/openthai-text",
             "ocr_results": "/paddle/api/v1/ocr-results",
             "ocr_result_batches": "/paddle/api/v1/ocr-result-batches",
             "text_detections": "/paddle/api/v1/text-detections",
@@ -332,6 +335,12 @@ async def layout_prediction_batches(request: Request) -> dict[str, Any]:
 async def image_classification_batches(request: Request) -> dict[str, Any]:
     return await _forward_multiple(request, upstream=SIGLIP_URL,
                                    endpoint="/paddle/api/v1/image-classification-batches")
+
+
+@app.post("/paddle/api/v1/openthai-text", tags=["Public model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+async def openthai_text(request: Request) -> dict[str, Any]:
+    return await _forward(request, upstream=OCR_OPENTHAI_URL,
+                          endpoint="/paddle/api/v1/openthai-text")
 
 
 @app.post("/paddle/api/v1/ocr-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)

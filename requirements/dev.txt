@@ -2,3 +2,6 @@
 
 pytest
 httpx
+
+# OpenThai configuration and lightweight API tests (no ONNX weights required).
+pydantic-settings==2.12.0

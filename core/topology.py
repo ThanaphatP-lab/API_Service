@@ -16,6 +16,7 @@ class ServiceDescriptor:
 
 
 SERVICE_DESCRIPTORS = {
+    "openthai": ServiceDescriptor("leaf-openthai-ocr", "leaf", ("/paddle/api/v1/openthai-text",)),
     "layout": ServiceDescriptor("pipeline-document-layout", "pipeline", ("/paddle/api/v1/document-layouts", "/paddle/api/v1/document-layout-batches")),
     "layout-model": ServiceDescriptor("leaf-layout", "leaf", ("/paddle/api/v1/layout-prediction-batches",)),
     "ocr-custom": ServiceDescriptor("pipeline-ocr-custom", "pipeline", ("/paddle/api/v1/ocr-results?engine=custom",)),

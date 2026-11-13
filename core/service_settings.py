@@ -5,6 +5,7 @@ import os
 
 @dataclass(frozen=True)
 class ServiceURLs:
+    ocr_openthai_url: str = field(default_factory=lambda: os.getenv("OCR_OPENTHAI_URL", "http://localhost:8091"))
     # Unified DET is the default for manual launches as well as stack scripts.
     text_detection_url: str = field(default_factory=lambda: os.getenv("TEXT_DETECTION_URL", "http://localhost:8002").strip() or "http://localhost:8002")
     layout_pipeline_url: str = field(default_factory=lambda: os.getenv("LAYOUT_PIPELINE_URL", "http://localhost:8010"))

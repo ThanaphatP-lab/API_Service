@@ -34,6 +34,8 @@ def create_app(
     max_concurrent_requests: int | None = None,
     lifespan: Any = None,
 ) -> FastAPI:
+    if not public_api and auth_token_env != "INTERNAL_API_TOKEN":
+        raise ValueError("Internal services must use INTERNAL_API_TOKEN.")
     service = service_name or title.lower().replace(" ", "-")
     configure_access_logging()
     docs_enabled = not _is_production() and _env_flag("API_DOCS_ENABLED", "true")
@@ -131,6 +133,25 @@ def create_app(
                     ),
                     headers=_security_headers(headers),
                 )
+
+        # Internal inference/readiness never run anonymously, even in development.
+        if (
+            not public_api
+            and not expected_tokens
+            and request.method != "OPTIONS"
+            and request.url.path not in _AUTH_EXEMPT_PATHS
+            and not documentation_path
+        ):
+            authentication(request, "rejected", credential_type="missing_server_configuration")
+            return JSONResponse(
+                status_code=503,
+                content=_error_body(
+                    request,
+                    code="AUTH_CONFIGURATION_ERROR",
+                    message="The internal service authentication token is not configured.",
+                ),
+                headers=_security_headers({"X-Request-ID": request.state.request_id}),
+            )
 
         if (
             expected_tokens

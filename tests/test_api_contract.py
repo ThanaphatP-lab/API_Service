@@ -34,7 +34,8 @@ def _test_app():
 
 def test_json_base64_success_contract(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "10")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     response = client.post(
         "/paddle/api/v1/images",
@@ -50,7 +51,8 @@ def test_json_base64_success_contract(monkeypatch):
 
 def test_multipart_image_success(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "10")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
     raw = base64.b64decode(_png_data_url().split(",", 1)[1])
 
     response = client.post(
@@ -64,7 +66,8 @@ def test_multipart_image_success(monkeypatch):
 
 def test_invalid_base64_has_debuggable_error(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "10")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     response = client.post("/paddle/api/v1/images", json={"image": "not-base64!"})
 
@@ -78,7 +81,8 @@ def test_invalid_base64_has_debuggable_error(monkeypatch):
 def test_rate_limit_returns_429_and_headers(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "1")
     monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     assert client.post("/paddle/api/v1/images", json={"image": _png_data_url()}).status_code == 200
     response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
@@ -135,7 +139,8 @@ def test_development_docs_open_and_describe_auth(monkeypatch):
 
 def test_request_size_is_rejected_before_image_processing(monkeypatch):
     monkeypatch.setenv("MAX_REQUEST_MB", "1")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     response = client.post(
         "/paddle/api/v1/images",
@@ -149,7 +154,8 @@ def test_request_size_is_rejected_before_image_processing(monkeypatch):
 
 def test_image_pixel_limit_is_enforced(monkeypatch):
     monkeypatch.setenv("MAX_IMAGE_PIXELS", "8")
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
 
@@ -180,7 +186,8 @@ def test_public_api_redacts_internal_error_details(monkeypatch):
 
 
 def test_success_response_has_security_headers(monkeypatch):
-    client = TestClient(_test_app())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "contract-test-internal-key")
+    client = TestClient(_test_app(), headers={"X-API-Key": "contract-test-internal-key"})
 
     response = client.post("/paddle/api/v1/images", json={"image": _png_data_url()})
 

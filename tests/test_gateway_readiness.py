@@ -308,6 +308,25 @@ def test_table_v2_forwards_independent_recognition_variant(monkeypatch):
     }
 
 
+def test_table_v2_forwards_mixed_versions(monkeypatch):
+    forwarded = {}
+
+    async def forward(request, *, upstream, endpoint, extra_fields=None, field_resolver=None):
+        forwarded.update(extra_fields=extra_fields)
+        return {}
+
+    monkeypatch.setattr(gateway, "_forward", forward)
+    response = client.post(
+        "/paddle/api/v1/table-model-results?det_version=6&rec_version=5"
+        "&det_model=baseline&rec_model=thai_ft_v1"
+    )
+    assert response.status_code == 200
+    assert forwarded["extra_fields"] == {
+        "model": "baseline", "det_version": "v6", "rec_version": "v5",
+        "det_model": "baseline", "rec_model": "thai_ft_v1",
+    }
+
+
 def test_ocr_result_batches_route_to_integrated_paddle(monkeypatch):
     forwarded = {}
 
