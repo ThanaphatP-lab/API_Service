@@ -4,6 +4,7 @@ import io
 import json
 import sys
 import warnings
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -67,3 +68,14 @@ class Inference:
             result = self.reader.read(image)
             from inference.openthai.schemas import convert
             return convert(result, image.width, image.height)
+
+
+    def read_batch(self, contents):
+        """Process images in input order as one executor job; no concurrent reader calls."""
+        deadline = time.monotonic() + self.settings.request_timeout_seconds
+        results = []
+        for content in contents:
+            if time.monotonic() >= deadline:
+                raise _failure("REQUEST_TIMEOUT", "OpenThai processing deadline exceeded.", 504)
+            results.append(self.read(content))
+        return {"results": results, "count": len(results)}

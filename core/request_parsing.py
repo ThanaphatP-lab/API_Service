@@ -5,6 +5,7 @@ import binascii
 import io
 import json
 import tempfile
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -67,10 +68,24 @@ BATCH_IMAGE_REQUEST_OPENAPI = {
 }
 
 
+# Used only by endpoints that explicitly opt into single/batch auto detection.
+FLEXIBLE_IMAGE_REQUEST_OPENAPI = deepcopy(IMAGE_REQUEST_OPENAPI)
+for media, entry in FLEXIBLE_IMAGE_REQUEST_OPENAPI["requestBody"]["content"].items():
+    schema = entry["schema"]
+    schema.pop("required", None)
+    schema["properties"]["images"] = deepcopy(
+        BATCH_IMAGE_REQUEST_OPENAPI["requestBody"]["content"][media]["schema"]["properties"]["images"]
+    )
+    if media == "application/json":
+        schema["properties"]["image_base64"] = {"type": "string"}
+    schema["anyOf"] = [{"required": [key]} for key in ("image", "images", "image_base64")]
+
+
 @dataclass
 class ImageRequest:
     paths: list[Path]
     fields: dict[str, Any]
+    is_batch: bool = False
 
     @property
     def path(self) -> Path:
@@ -167,8 +182,8 @@ async def _read_upload_limited(upload: Any) -> bytes:
 
 
 @timed_stage("receive_decode_verify_images")
-async def parse_image_request(request: Request, *, multiple: bool = False) -> ImageRequest:
-    """Accept image input as multipart upload or JSON Base64/Data URL."""
+async def parse_image_request(request: Request, *, multiple: bool | None = False) -> ImageRequest:
+    """Accept image input; multiple=None opts into automatic single/batch mode."""
     content_type = request.headers.get("content-type", "").lower()
     fields: dict[str, Any] = {}
     raw_images: list[bytes] = []
@@ -185,6 +200,8 @@ async def parse_image_request(request: Request, *, multiple: bool = False) -> Im
                 fields[key] = [existing, value] if not isinstance(existing, list) else [*existing, value]
             else:
                 fields[key] = value
+        if multiple is None:
+            multiple = "images" in form or len(raw_images) > 1 or len(form.getlist("image_base64")) > 1
         base64_value = fields.pop("image_base64", None)
         if base64_value and not raw_images:
             values = base64_value if isinstance(base64_value, list) else [base64_value]
@@ -196,7 +213,14 @@ async def parse_image_request(request: Request, *, multiple: bool = False) -> Im
             raise ModelAPIError(400, "INVALID_JSON", "The request body is not valid JSON.") from exc
         if not isinstance(payload, dict):
             raise ModelAPIError(422, "VALIDATION_ERROR", "The JSON body must be an object.")
-        values = payload.get("images") if multiple else payload.get("image", payload.get("image_base64"))
+        if multiple is None:
+            if "images" in payload and any(key in payload for key in ("image", "image_base64")):
+                raise ModelAPIError(422, "VALIDATION_ERROR", "Use image or images, not both.")
+            multiple = "images" in payload
+            values = payload.get("images") if multiple else payload.get("image", payload.get("image_base64"))
+            multiple = multiple or isinstance(values, list)
+        else:
+            values = payload.get("images") if multiple else payload.get("image", payload.get("image_base64"))
         if values is not None:
             image_values = values if isinstance(values, list) else [values]
             raw_images.extend(_decode_base64(str(value)) for value in image_values)
@@ -225,7 +249,7 @@ async def parse_image_request(request: Request, *, multiple: bool = False) -> Im
     try:
         for data in raw_images:
             paths.append(_write_verified_image(data))
-        return ImageRequest(paths=paths, fields=fields)
+        return ImageRequest(paths=paths, fields=fields, is_batch=bool(multiple))
     except Exception:
         for path in paths:
             path.unlink(missing_ok=True)

@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import Request
 
-from core.request_parsing import BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.request_parsing import FLEXIBLE_IMAGE_REQUEST_OPENAPI, BATCH_IMAGE_REQUEST_OPENAPI, IMAGE_REQUEST_OPENAPI, parse_image_request
 from core.app_factory import create_app
 from shared.contracts import ModelAPIError, request_id, success_response
 from shared.model_variants import normalize_model_variant, normalize_model_version
@@ -337,10 +337,18 @@ async def image_classification_batches(request: Request) -> dict[str, Any]:
                                    endpoint="/paddle/api/v1/image-classification-batches")
 
 
-@app.post("/paddle/api/v1/openthai-text", tags=["Public model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+@app.post("/paddle/api/v1/openthai-text", tags=["Public model inference"], openapi_extra=FLEXIBLE_IMAGE_REQUEST_OPENAPI)
 async def openthai_text(request: Request) -> dict[str, Any]:
-    return await _forward(request, upstream=OCR_OPENTHAI_URL,
-                          endpoint="/paddle/api/v1/openthai-text")
+    images = await parse_image_request(request, multiple=None)
+    try:
+        data = await asyncio.to_thread(
+            post_images, OCR_OPENTHAI_URL, "/paddle/api/v1/openthai-text",
+            images.paths, fields=images.fields, request_id=request_id(request),
+            multiple=images.is_batch,
+        )
+        return success_response(request, data, service=SERVICE_NAME, model=MODEL_NAME)
+    finally:
+        images.cleanup()
 
 
 @app.post("/paddle/api/v1/ocr-results", tags=["Public pipelines"], openapi_extra=IMAGE_REQUEST_OPENAPI)

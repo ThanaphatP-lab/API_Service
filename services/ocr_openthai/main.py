@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import Request
 from fastapi.responses import Response
 from core.app_factory import create_app as create_model_app
-from core.request_parsing import IMAGE_REQUEST_OPENAPI, parse_image_request
+from core.request_parsing import FLEXIBLE_IMAGE_REQUEST_OPENAPI, parse_image_request
 from inference.openthai.engine import Inference
 from inference.openthai.settings import MODEL_REVISION, Settings
 from shared.contracts import ModelAPIError, success_response
@@ -46,18 +46,22 @@ def create_app(settings=None, loader=None):
         return success_response(request, {"status": "ready"}, service=SERVICE_NAME,
                                 model=MODEL_NAME, model_version=MODEL_REVISION)
 
-    @app.post(ENDPOINT, tags=["Model inference"], openapi_extra=IMAGE_REQUEST_OPENAPI)
+    @app.post(ENDPOINT, tags=["Model inference"], openapi_extra=FLEXIBLE_IMAGE_REQUEST_OPENAPI)
     async def predict(request: Request):
         ensure_ready()
-        image = await parse_image_request(request)
+        image = await parse_image_request(request, multiple=None)
         try:
             # Retain a concurrent Future so HTTP cancellation cannot release
             # the native inference slot or enqueue additional model work.
             if inference.pending is not None and not inference.pending.done():
                 raise ModelAPIError(503, "SERVICE_BUSY", "OpenThai is still processing a previous request.")
-            if image.path.stat().st_size > settings.max_upload_bytes:
+            if any(path.stat().st_size > settings.max_upload_bytes for path in image.paths):
                 raise ModelAPIError(413, "PAYLOAD_TOO_LARGE", "Image exceeds the OpenThai upload limit.")
-            inference.pending = inference.executor.submit(inference.read, image.path.read_bytes())
+            # Read before submission so temporary files can be cleaned safely on timeout.
+            contents = [path.read_bytes() for path in image.paths]
+            worker = inference.read_batch if image.is_batch else inference.read
+            argument = contents if image.is_batch else contents[0]
+            inference.pending = inference.executor.submit(worker, argument)
             future = asyncio.wrap_future(inference.pending)
             future.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
             try:

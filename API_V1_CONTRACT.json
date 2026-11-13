@@ -9,6 +9,8 @@
     "error_required": ["code", "message", "details", "request_id", "docs"]
   },
   "public_endpoints": [
+    {"method": "POST", "path": "/paddle/api/v1/layout-predictions", "success_data": []},
+    {"method": "POST", "path": "/paddle/api/v1/openthai-text", "success_data": [], "success_data_variants": {"single": ["text", "lines", "confidence", "geometry_available", "image", "rotation", "text_angle"], "batch": ["results", "count"]}},
     {"method": "POST", "path": "/paddle/api/v1/document-layout-batches", "success_data": ["results", "count"]},
     {"method": "POST", "path": "/paddle/api/v1/layout-prediction-batches", "success_data": ["results", "count"]},
     {"method": "POST", "path": "/paddle/api/v1/image-classification-batches", "success_data": ["results", "count"]},

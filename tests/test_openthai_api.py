@@ -48,18 +48,24 @@ def test_load_failure():
         assert client.get("/paddle/api/v1/readiness").status_code == 503
         assert client.post(ENDPOINT).json()["error"]["code"] == "MODEL_NOT_READY"
 
-def test_timeout_does_not_release_native_job():
+@pytest.mark.parametrize("batch", [False, True])
+def test_timeout_does_not_release_native_job(batch):
     release = threading.Event()
     started = threading.Event()
+    calls = []
     class SlowReader(Reader):
         def read(self, image):
+            calls.append(1)
             started.set()
             release.wait(5)
             return super().read(image)
     app = create_app(Settings(request_timeout_seconds=0.1), loader=SlowReader)
     with TestClient(app, headers={"X-API-Key": "test-openthai-internal"}) as client:
         try:
-            first = client.post(ENDPOINT, files={"image": ("a.png", png(), "image/png")})
+            files = ([("images", ("a.png", png(), "image/png")),
+                      ("images", ("b.png", png(), "image/png"))] if batch
+                     else {"image": ("a.png", png(), "image/png")})
+            first = client.post(ENDPOINT, files=files)
             assert started.is_set()
             assert first.status_code == 504
             assert not app.state.inference.pending.done()
@@ -68,7 +74,13 @@ def test_timeout_does_not_release_native_job():
             assert second.json()["error"]["code"] == "SERVICE_BUSY"
         finally:
             release.set()
-        app.state.inference.pending.result(timeout=5)
+        if batch:
+            from shared.contracts import ModelAPIError
+            with pytest.raises(ModelAPIError):
+                app.state.inference.pending.result(timeout=5)
+        else:
+            app.state.inference.pending.result(timeout=5)
+        assert len(calls) == 1
 
 def test_gateway_forwards_and_wraps_once(monkeypatch):
     def post(base_url, endpoint, paths, **kwargs):
@@ -126,3 +138,98 @@ def test_checksum_rejected_before_import(tmp_path):
         assert inference.reader is None
     finally:
         inference.executor.shutdown()
+
+
+def sized_png(width):
+    out = io.BytesIO()
+    Image.new("RGB", (width, 4), "white").save(out, format="PNG")
+    return out.getvalue()
+
+
+@pytest.mark.parametrize("mode,count", [("multipart", 2), ("json", 2), ("multipart", 1),
+                                       ("json", 1), ("repeated_image", 2), ("image_array", 2)])
+def test_batch_order_and_gateway_roundtrip(monkeypatch, mode, count):
+    from core import request_parsing
+    paths = []
+    original = request_parsing._write_verified_image
+    def capture(data):
+        path = original(data)
+        paths.append(path)
+        return path
+    monkeypatch.setattr(request_parsing, "_write_verified_image", capture)
+    class SizeReader:
+        def read(self, image):
+            return {"text": str(image.width), "lines": []}
+    with TestClient(create_app(Settings(), loader=SizeReader),
+                    headers={"X-API-Key": "test-openthai-internal"}) as leaf:
+        def forward(base_url, endpoint, image_paths, **kwargs):
+            assert kwargs["multiple"] is True
+            assert len(image_paths) == count
+            response = leaf.post(endpoint, files=[
+                ("images", (path.name, path.read_bytes(), "image/png")) for path in image_paths
+            ])
+            assert response.status_code == 200, response.text
+            return response.json()["data"]
+        monkeypatch.setattr(gateway, "post_images", forward)
+        widths = list(range(5, 5 + count))
+        if mode in ("json", "image_array"):
+            kwargs = {"json": {"images" if mode == "json" else "image": [
+                base64.b64encode(sized_png(width)).decode() for width in widths]}}
+        else:
+            key = "image" if mode == "repeated_image" else "images"
+            kwargs = {"files": [(key, (str(w)+".png", sized_png(w), "image/png")) for w in widths]}
+        response = TestClient(gateway.app).post(ENDPOINT, **kwargs)
+        assert response.status_code == 200, response.text
+        data = response.json()["data"]
+        assert data["count"] == count
+        assert [result["text"] for result in data["results"]] == [str(w) for w in widths]
+        assert all(not path.exists() for path in paths)
+
+
+def test_batch_limits_and_empty_input(monkeypatch):
+    monkeypatch.setenv("MAX_BATCH_IMAGES", "1")
+    class NoCalls:
+        def read(self, image):
+            pytest.fail("Over-limit batches must not reach the model")
+    with TestClient(create_app(Settings(), loader=NoCalls),
+                    headers={"X-API-Key": "test-openthai-internal"}) as leaf:
+        body = {"images": [base64.b64encode(png()).decode()] * 2}
+        for client in (leaf, TestClient(gateway.app)):
+            response = client.post(ENDPOINT, json=body)
+            assert response.status_code == 413
+            assert response.json()["error"]["code"] == "BATCH_TOO_LARGE"
+            assert client.post(ENDPOINT, json={"images": []}).status_code == 422
+            assert client.post(ENDPOINT, json={"images": [], "image": "bad"}).status_code == 422
+
+
+def test_invalid_second_image_cleans_first(monkeypatch):
+    from core import request_parsing
+    paths = []
+    original = request_parsing._write_verified_image
+    def capture(data):
+        path = original(data)
+        paths.append(path)
+        return path
+    monkeypatch.setattr(request_parsing, "_write_verified_image", capture)
+    with TestClient(create_app(Settings(), loader=Reader),
+                    headers={"X-API-Key": "test-openthai-internal"}) as client:
+        response = client.post(ENDPOINT, files=[
+            ("images", ("a.png", png(), "image/png")),
+            ("images", ("bad.png", b"not-image", "image/png")),
+        ])
+        assert response.status_code == 422
+        assert paths and all(not path.exists() for path in paths)
+
+
+def test_batch_output_limit_applies_to_total():
+    class LargeReader:
+        def read(self, image):
+            return {"text": "x" * 600, "lines": []}
+    with TestClient(create_app(Settings(max_response_bytes=1024), loader=LargeReader),
+                    headers={"X-API-Key": "test-openthai-internal"}) as client:
+        response = client.post(ENDPOINT, files=[
+            ("images", ("a.png", png(), "image/png")),
+            ("images", ("b.png", png(), "image/png")),
+        ])
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "OUTPUT_TOO_LARGE"
