@@ -54,6 +54,10 @@ setup_env() {
     fi
   fi
 
+  if [[ "$directory" == ".venv-openthai" ]]; then
+    "$environment/bin/python" -c 'import sys; assert sys.version_info[:2] in ((3, 11), (3, 12)), "OpenThai requires Python 3.11/3.12"'
+  fi
+
   echo "[INFO] Installing $requirements into $directory..."
   "$environment/bin/python" -m pip install --upgrade pip
   if ! "$environment/bin/python" -m pip install \
@@ -68,17 +72,27 @@ setup_env() {
   fi
 }
 
+# OpenThai requires Python 3.11+ (hashlib.file_digest).
+if [[ "$TARGET" == "openthai" || "$TARGET" == "all" ]]; then
+  case "$python_version" in
+    3.11|3.12) ;;
+    *) echo "[ERROR] OpenThai requires Python 3.11/3.12; set PYTHON_BIN." >&2; exit 1 ;;
+  esac
+fi
+
 case "$TARGET" in
   all)
     setup_env .venv-paddle requirements-paddle.txt
     setup_env .venv-siglip requirements-siglip.txt
     setup_env .venv-api requirements-api.txt
+    setup_env .venv-openthai requirements/openthai.txt
     ;;
   paddle) setup_env .venv-paddle requirements-paddle.txt ;;
   siglip) setup_env .venv-siglip requirements-siglip.txt ;;
   api) setup_env .venv-api requirements-api.txt ;;
+  openthai) setup_env .venv-openthai requirements/openthai.txt ;;
   *)
-    echo "Usage: $0 <all|paddle|siglip|api>" >&2
+    echo "Usage: $0 <all|paddle|siglip|api|openthai>" >&2
     exit 2
     ;;
 esac

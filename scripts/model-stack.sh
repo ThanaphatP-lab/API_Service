@@ -35,6 +35,7 @@ fi
 : "${REC_TH_PORT:=8004}"
 : "${OCR_CUSTOM_PORT:=8005}"
 : "${OCR_PADDLE_PORT:=8006}"
+: "${OPENTHAI_PORT:=8091}"
 : "${TABLE_WIRED_PORT:=8007}"
 : "${TABLE_WIRELESS_PORT:=8008}"
 : "${SIGLIP_PORT:=8009}"
@@ -46,6 +47,7 @@ fi
 : "${DEMO_PORT:=8501}"
 
 : "${API_PYTHON:=$ROOT/.venv-api/bin/python}"
+: "${OPENTHAI_PYTHON:=$ROOT/.venv-openthai/bin/python}"
 : "${PADDLE_PYTHON:=$ROOT/.venv-paddle/bin/python}"
 : "${SIGLIP_PYTHON:=$ROOT/.venv-siglip/bin/python}"
 : "${PADDLE_PDX_CACHE_HOME:=$CACHE_DIR/paddlex}"
@@ -61,7 +63,7 @@ chmod 700 "$RUN_DIR" "$LOG_DIR" "$CACHE_DIR" "$MODEL_TMP_DIR"
 
 ALL_SERVICES=(
   layout detection rec-th table-wired table-wireless table-v2 siglip
-  ocr-custom ocr-paddle layout-pipeline table-pipeline image-verification gateway
+  ocr-custom ocr-paddle openthai layout-pipeline table-pipeline image-verification gateway
 )
 ALL_WITH_DEMO=("${ALL_SERVICES[@]}" demo)
 CORE_SERVICES=(
@@ -84,6 +86,7 @@ Profiles:
   core-stack        default production stack using split polygon det + rec OCR
   ocr-custom-stack  detection (v5/v6) + rec-th + ocr-custom + gateway
   ocr-paddle-stack  ocr-paddle + gateway
+  openthai-stack    OpenThai CPU OCR + gateway
   layout-stack      layout + detection + layout-pipeline + gateway
   table-stack       detection + rec-th + ocr-custom + table models/pipeline + gateway
   table-v2-stack    notebook TableRecognitionPipelineV2 + gateway (no split table models)
@@ -91,7 +94,7 @@ Profiles:
   all               every model/pipeline + gateway (Demo is started separately)
 
 Services:
-  layout detection rec-th ocr-custom ocr-paddle table-wired
+  layout detection rec-th ocr-custom ocr-paddle openthai table-wired
   table-wireless table-v2 siglip layout-pipeline table-pipeline image-verification
   gateway demo
 
@@ -107,12 +110,13 @@ target_services() {
     core-stack) echo "${CORE_SERVICES[*]}" ;;
     ocr-custom-stack) echo "detection rec-th ocr-custom gateway" ;;
     ocr-paddle-stack) echo "ocr-paddle gateway" ;;
+    openthai-stack) echo "openthai gateway" ;;
     layout-stack) echo "layout detection layout-pipeline gateway" ;;
     table-stack) echo "detection rec-th ocr-custom table-wired table-wireless table-pipeline gateway" ;;
     table-v2-stack) echo "table-v2 gateway" ;;
     verification-stack) echo "siglip image-verification gateway" ;;
     all) echo "${ALL_WITH_DEMO[*]}" ;;
-    layout|detection|rec-th|ocr-custom|ocr-paddle|table-wired|table-wireless|table-v2|siglip|layout-pipeline|table-pipeline|image-verification|gateway|demo) echo "$1" ;;
+    layout|detection|rec-th|ocr-custom|ocr-paddle|openthai|table-wired|table-wireless|table-v2|siglip|layout-pipeline|table-pipeline|image-verification|gateway|demo) echo "$1" ;;
     *)
       echo "[ERROR] Unknown service/profile: $1" >&2
       usage >&2
@@ -134,6 +138,7 @@ profile_pipelines() {
     core-stack) echo "layout,ocr-custom,table,image-verification,text-detection,text-recognition,siglip" ;;
     ocr-custom-stack) echo "ocr-custom,text-detection,text-recognition" ;;
     ocr-paddle-stack) echo "ocr-paddle" ;;
+    openthai-stack) echo "openthai" ;;
     layout-stack) echo "layout,text-detection" ;;
     table-stack) echo "table,text-detection,text-recognition" ;;
     table-v2-stack) echo "table-model" ;;
@@ -150,6 +155,7 @@ service_port() {
     rec-th) echo "$REC_TH_PORT" ;;
     ocr-custom) echo "$OCR_CUSTOM_PORT" ;;
     ocr-paddle) echo "$OCR_PADDLE_PORT" ;;
+    openthai) echo "$OPENTHAI_PORT" ;;
     table-wired) echo "$TABLE_WIRED_PORT" ;;
     table-wireless) echo "$TABLE_WIRELESS_PORT" ;;
     table-v2) echo "$TABLE_V2_PORT" ;;
@@ -169,6 +175,7 @@ service_module() {
     rec-th) echo "services.text_rec.main:app" ;;
     ocr-custom) echo "services.ocr_pipeline_custom.main:app" ;;
     ocr-paddle) echo "services.ocr_pipeline_paddle.main:app" ;;
+    openthai) echo "services.ocr_openthai.main:app" ;;
     table-wired|table-wireless) echo "services.table.main:app" ;;
     table-v2) echo "services.table_v2.main:app" ;;
     siglip) echo "services.siglip.main:app" ;;
@@ -184,6 +191,7 @@ service_python() {
   case "$1" in
     layout|detection|rec-th|ocr-paddle|table-wired|table-wireless|table-v2) echo "$PADDLE_PYTHON" ;;
     siglip) echo "$SIGLIP_PYTHON" ;;
+    openthai) echo "$OPENTHAI_PYTHON" ;;
     *) echo "$API_PYTHON" ;;
   esac
 }
@@ -245,7 +253,11 @@ validate_secret() {
       return 1
     fi
   elif [[ -z "$value" ]]; then
-    echo "[WARN] $name is empty; protected APIs will run without authentication in development." >&2
+    if [[ "$name" == "INTERNAL_API_TOKEN" ]]; then
+      echo "[ERROR] INTERNAL_API_TOKEN is required for internal services." >&2
+      return 1
+    fi
+    echo "[WARN] $name is empty; Gateway authentication is disabled in development." >&2
   fi
 }
 
@@ -256,7 +268,7 @@ preflight() {
       return 1
     fi
   done
-  validate_secret MODEL_GATEWAY_API_KEY
+  if [[ "${target:-all}" != "openthai" ]]; then validate_secret MODEL_GATEWAY_API_KEY; fi
   validate_secret INTERNAL_API_TOKEN
   if [[ -f "$ENV_FILE" ]] && command -v stat >/dev/null 2>&1; then
     local env_mode
@@ -269,6 +281,14 @@ preflight() {
   if [[ ! -d "$ROOT/weights" ]]; then
     echo "[ERROR] Missing weights directory: $ROOT/weights" >&2
     return 1
+  fi
+  # OpenThai and its Gateway profile run on CPU.
+  if [[ "${target:-all}" == "openthai" || "${target:-all}" == "openthai-stack" ]]; then
+    if [[ ! -d "${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2}" ]]; then
+      echo "[ERROR] OpenThai weights directory is missing; set OPENTHAI_MODEL_DIR." >&2
+      return 1
+    fi
+    return 0
   fi
   if command -v nvidia-smi >/dev/null 2>&1; then
     nvidia-smi >/dev/null || {
@@ -287,7 +307,7 @@ print_check() {
   echo "[OK] environment=$APP_ENV device=$MODEL_DEVICE"
   echo "[OK] runtime_dir=$RUN_DIR log_dir=$LOG_DIR"
   echo "[OK] cache_dir=$CACHE_DIR temp_dir=$MODEL_TMP_DIR"
-  for environment in "$API_PYTHON" "$PADDLE_PYTHON" "$SIGLIP_PYTHON"; do
+  for environment in "$API_PYTHON" "$PADDLE_PYTHON" "$SIGLIP_PYTHON" "$OPENTHAI_PYTHON"; do
     if [[ -x "$environment" ]]; then
       echo "[OK] python=$environment ($("$environment" --version 2>&1))"
     else
@@ -315,6 +335,7 @@ export_service_environment() {
   export LAYOUT_SERVICE_URL="${LAYOUT_SERVICE_URL:-http://127.0.0.1:$LAYOUT_PORT}"
   export SIGLIP_SERVICE_URL="${SIGLIP_SERVICE_URL:-http://127.0.0.1:$SIGLIP_PORT}"
   export LAYOUT_PIPELINE_URL="${LAYOUT_PIPELINE_URL:-http://127.0.0.1:$LAYOUT_PIPELINE_PORT}"
+  export OCR_OPENTHAI_URL="${OCR_OPENTHAI_URL:-http://127.0.0.1:$OPENTHAI_PORT}"
   export OCR_CUSTOM_URL="${OCR_CUSTOM_URL:-http://127.0.0.1:$OCR_CUSTOM_PORT}"
   export OCR_PADDLE_URL="${OCR_PADDLE_URL:-http://127.0.0.1:$OCR_PADDLE_PORT}"
   export TABLE_PIPELINE_URL="${TABLE_PIPELINE_URL:-http://127.0.0.1:$TABLE_PIPELINE_PORT}"
@@ -330,10 +351,15 @@ export_service_environment() {
     export MAX_CONCURRENT_REQUESTS="${GATEWAY_MAX_CONCURRENT_REQUESTS:-4}"
     if [[ -n "${STACK_GATEWAY_PIPELINES:-}" ]]; then
       export GATEWAY_ENABLED_PIPELINES="$STACK_GATEWAY_PIPELINES"
+      export GATEWAY_ENABLED_SERVICES="$STACK_GATEWAY_PIPELINES"
     fi
   fi
 
   case "$service" in
+    openthai)
+      export MODEL_DEVICE=cpu
+      export OPENTHAI_MODEL_DIR="${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2}"
+      ;;
     detection)
       # Registry owns model names/directories for BOTH versions. Do not impose
       # the old per-process DET_MODEL_NAME / DET_MODEL_DIR baseline overrides.
