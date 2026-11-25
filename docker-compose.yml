@@ -43,6 +43,20 @@ x-gpu-service: &gpu-service
             capabilities: [gpu]
 
 services:
+  openthai:
+    profiles: ["openthai"]
+    build:
+      context: .
+      dockerfile: services/ocr_openthai/Dockerfile
+    environment:
+      <<: *common-environment
+      MODEL_DEVICE: cpu
+      OPENTHAI_MODEL_DIR: /app/weights/openthai2.1
+    volumes:
+      - ./weights:/app/weights:ro
+    expose: ["8000"]
+    restart: unless-stopped
+
   model-image:
     image: ${MODEL_IMAGE:-api-service-model:latest}
     build:
@@ -235,6 +249,7 @@ services:
       DET_V5_URL: http://text-det-v5:8000
       DET_V6_URL: http://text-det-v6:8000
       REC_SERVICE_URL: http://text-rec-th:8000
+      OCR_OPENTHAI_URL: http://openthai:8000
       OCR_CUSTOM_URL: http://ocr-custom:8000
       OCR_PADDLE_URL: http://ocr-paddle:8000
       TABLE_PIPELINE_URL: http://table-pipeline:8000

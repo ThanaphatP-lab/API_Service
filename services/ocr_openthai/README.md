@@ -22,12 +22,11 @@ discovery/readiness, and to the required list only if it should gate readiness.
     curl.exe -X POST http://localhost:8080/paddle/api/v1/openthai-text -H "Authorization: Bearer YOUR_GATEWAY_KEY" -F "image=@sample.png"
 
 ## Weights and Docker
-Default weights: weights/openthai2/. OPENTHAI_MODEL_DIR overrides this location.
+Default weights: weights/openthai2.1/. OPENTHAI_MODEL_DIR overrides this location.
 Provision all files in inference/openthai/model-manifest.json, retaining runtime/.
 The loader verifies SHA-256 before importing code; it does not download weights.
-A mismatched snapshot fails readiness. The existing test snapshot has a different
-README checksum from the original API manifest; provision a matching verified
-snapshot rather than bypassing verification.
+A mismatched snapshot fails readiness. All runtime files, including rec2.onnx,
+are mandatory and verified against the pinned manifest.
 
     docker compose --profile openthai up -d --build openthai gateway
 
@@ -101,3 +100,28 @@ OPENTHAI_MAX_RESPONSE_BYTES apply to the entire batch. A failed image fails the
 request (no partial-success payload). After timeout the current native call can
 finish; the deadline prevents starting subsequent images. Temporary files are
 cleaned even when the request fails or times out.
+
+
+## Upgrade to OpenThai 2.1.4
+Repository: https://huggingface.co/iapp/OpenThai2.1-OCR-Text-20261118
+Pinned revision: c765cb8017c406ddc2a518de51db22bb2e2bbd07.
+Default snapshot: weights/openthai2.1 (the previous weights/openthai2 is retained).
+The detector and primary recognizer are unchanged upstream, but runtime/config
+changed and rec2.onnx adds a second recognizer. ONNX Runtime remains the backend;
+OpenVINO is not required. Additional native fields such as words/dropped/timing
+are intentionally filtered by the existing output schema.
+
+Provision on Linux from models/ (weights are not distributed by Git):
+
+    python3 scripts/download-openthai.py
+    bash scripts/setup-linux.sh openthai
+
+Update an explicit OPENTHAI_MODEL_DIR in .env.runtime to the new snapshot,
+or remove the override to use the new default. Then:
+
+    bash scripts/model-stack.sh restart openthai
+    bash scripts/model-stack.sh readiness openthai
+
+The endpoint, single/batch output and internal authentication are unchanged.
+Direct service meta.model identifies the new repository; meta.model_version
+contains the pinned commit. Gateway meta still describes the Gateway.

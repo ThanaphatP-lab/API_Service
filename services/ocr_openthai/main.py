@@ -8,11 +8,11 @@ from fastapi.responses import Response
 from core.app_factory import create_app as create_model_app
 from core.request_parsing import FLEXIBLE_IMAGE_REQUEST_OPENAPI, parse_image_request
 from inference.openthai.engine import Inference
-from inference.openthai.settings import MODEL_REVISION, Settings
+from inference.openthai.settings import MODEL_REPOSITORY, MODEL_REVISION, Settings
 from shared.contracts import ModelAPIError, success_response
 
 SERVICE_NAME = "leaf-openthai-ocr"
-MODEL_NAME = "iapp/OpenThai2.0-OCR-Text"
+MODEL_NAME = MODEL_REPOSITORY
 ENDPOINT = "/paddle/api/v1/openthai-text"
 
 

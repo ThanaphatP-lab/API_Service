@@ -38,6 +38,9 @@ def test_success(multipart):
         assert body["data"]["image"] == {"width": 4, "height": 4}
         assert body["meta"]["request_id"] == "req_openthai"
         assert body["meta"]["service"] == "leaf-openthai-ocr"
+        from inference.openthai.settings import MODEL_REPOSITORY, MODEL_REVISION
+        assert body["meta"]["model"] == MODEL_REPOSITORY
+        assert body["meta"]["model_version"] == MODEL_REVISION
         assert client.get("/paddle/api/v1/readiness").status_code == 200
 
 def test_load_failure():
@@ -130,7 +133,13 @@ def test_output_size_limit():
 
 def test_checksum_rejected_before_import(tmp_path):
     from inference.openthai.engine import Inference
-    (tmp_path / "det.onnx").write_bytes(b"invalid")
+    import json
+    from pathlib import Path
+    manifest = json.loads((Path(__file__).resolve().parents[1] /
+                           "inference/openthai/model-manifest.json").read_text())
+    first_file = tmp_path / next(iter(manifest["sha256"]))
+    first_file.parent.mkdir(parents=True, exist_ok=True)
+    first_file.write_bytes(b"invalid")
     inference = Inference(Settings(model_dir=tmp_path))
     try:
         with pytest.raises(ValueError, match="checksum mismatch"):

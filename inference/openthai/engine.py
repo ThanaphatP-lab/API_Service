@@ -1,5 +1,6 @@
 import hashlib
 import importlib
+import importlib.util
 import io
 import json
 import sys
@@ -49,15 +50,25 @@ class Inference:
 
     def load(self):
         directory = self.settings.model_dir.resolve()
-        manifest = json.loads((Path(__file__).with_name("model-manifest.json")).read_text())
+        manifest = json.loads((Path(__file__).with_name("model-manifest.json")).read_text(encoding="utf-8"))
         for name, expected in manifest["sha256"].items():
             with (directory / name).open("rb") as source:
                 actual = hashlib.file_digest(source, "sha256").hexdigest()
             if actual != expected:
-                raise ValueError("Model snapshot checksum mismatch")
+                raise ValueError("Model snapshot checksum mismatch: " + name)
         # Only the operator-provisioned, revision-verified model directory is imported.
-        sys.path.insert(0, str(directory))
-        module = importlib.import_module("runtime.line_engine")
+        # Isolate this verified snapshot from unrelated or previously imported runtime packages.
+        suffix = hashlib.sha256(str(directory).encode()).hexdigest()[:12]
+        package_name = "_openthai_" + manifest["revision"] + "_" + suffix
+        if package_name not in sys.modules:
+            spec = importlib.util.spec_from_file_location(
+                package_name, directory / "runtime" / "__init__.py",
+                submodule_search_locations=[str(directory / "runtime")],
+            )
+            package = importlib.util.module_from_spec(spec)
+            sys.modules[package_name] = package
+            spec.loader.exec_module(package)
+        module = importlib.import_module(package_name + ".line_engine")
         return module.LineOCR(directory, threads=self.settings.threads, runtime={"backend": "onnxruntime"})
 
     def initialize(self):

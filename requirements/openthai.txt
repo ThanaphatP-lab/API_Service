@@ -1,3 +1,5 @@
+# OpenThai 2.1.4; retain the ONNX Runtime CPU backend.
+# Pinned runtime dependencies satisfy the upstream 2.1.4 requirements.
 fastapi==0.121.1
 uvicorn==0.38.0
 pydantic-settings==2.12.0

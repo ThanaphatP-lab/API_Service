@@ -284,7 +284,7 @@ preflight() {
   fi
   # OpenThai and its Gateway profile run on CPU.
   if [[ "${target:-all}" == "openthai" || "${target:-all}" == "openthai-stack" ]]; then
-    if [[ ! -d "${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2}" ]]; then
+    if [[ ! -d "${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2.1}" ]]; then
       echo "[ERROR] OpenThai weights directory is missing; set OPENTHAI_MODEL_DIR." >&2
       return 1
     fi
@@ -358,7 +358,7 @@ export_service_environment() {
   case "$service" in
     openthai)
       export MODEL_DEVICE=cpu
-      export OPENTHAI_MODEL_DIR="${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2}"
+      export OPENTHAI_MODEL_DIR="${OPENTHAI_MODEL_DIR:-$ROOT/weights/openthai2.1}"
       ;;
     detection)
       # Registry owns model names/directories for BOTH versions. Do not impose
